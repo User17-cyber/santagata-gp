@@ -3473,7 +3473,10 @@ function migrateOwned(){const old=econ.owned||{};if(!Object.keys(old).some(k=>SH
   econ.owned=neu;econ.money+=refund;saveEcon();
   if(refund)setTimeout(()=>{refreshMoney();const el=$('#bestLine');if(el)el.innerHTML=`<span style="color:var(--good)">Parts now belong to one car each · ${fmtMoney(refund)} refunded for parts that weren't fitted to any car</span>`;},1500);}
 function equipFor(carId){const e=econ.equip[carId]||{};const out={};for(const k in SHOP)out[k]=owns(k,e[k],carId)?e[k]:SHOP[k].opts[0].id;const car=CARS.find(x=>x.id===carId);if(car)out.colour='p'+carPaint(car);return out;}
-function award(amount,why){if(amount<=0)return;econ.money+=Math.round(amount);career.stats.earned+=Math.round(amount);saveEcon();refreshMoney();
+function award(amount,why){if(amount<=0)return;if(raceHolds()){game.held=(game.held||0)+Math.round(amount);cashPop(amount,why);return;}econ.money+=Math.round(amount);career.stats.earned+=Math.round(amount);saveEcon();refreshMoney();cashPop(amount,why);}
+function raceHolds(){return !!(game&&(game.mode==='track'||game.mode==='drag')&&!game.resultShown&&!game.paying);}
+function forfeitRace(){if(!raceHolds())return;const s=game.snap;if(s){career.medals=s.m;career.tokens=s.t;saveCareer();}game.held=0;}
+function cashPop(amount,why){
   const el=$('#cash');if(el){el.textContent='+'+fmtMoney(amount)+(why?' · '+why:'');el.classList.add('on');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('on'),1600);}}
 function refreshMoney(){const m=fmtMoney(econ.money);const a=$('#money'),b=$('#shopMoney');if(a)a.textContent=m;if(b)b.textContent=m;}
 
@@ -14614,7 +14617,7 @@ function showcase(){decorReset();clearWorld();garageTick=null;carFollowers=[];
 function startRace(){const c=CARS[state.carIdx];if(!carOwned(c)){buyCar(c);return;}if(decPlacing)cancelPlace();freeCam=false;wxPreview=toyTry=lifeArmed=garagePreview=null;viewPreview=null;['#life','#garages','#displays','#decor'].forEach(k=>$(k).hidden=true);audio.init();clearWorld();resetDamageFx();player.veh=new Vehicle(tunedCar(c));player.mesh=applyCosmetics(buildCar(c,PAINTS[state.paint][1],true),c);player.mesh.rotation.order='YXZ';world.add(player.mesh);
   const others=CARS.filter(x=>!x.concept&&!x.noAI&&x.id!==c.id);
   
-  game={mode:state.mode,t:0,started:false,done:false,msg:'',lap:1,laps:(TRACKS.find(t=>t.id===state.track)||TRACKS[0]).laps||3,lapStart:0,lapTimes:[],best:store.get(bestKey(),null),idx:0,lastIdx:0,pos:1,react:null,foul:false,et:null,trap:null,rivalET:null,marks:{},top:0,dist:0,zeroStart:null,resultShown:false,offRoad:false,newBest:false,everScraped:false,paidKm:0,paidTop:0,bestET:store.get(bestKey(),null)};
+  game={mode:state.mode,t:0,started:false,done:false,msg:'',lap:1,laps:(TRACKS.find(t=>t.id===state.track)||TRACKS[0]).laps||3,lapStart:0,lapTimes:[],best:store.get(bestKey(),null),idx:0,lastIdx:0,pos:1,react:null,foul:false,et:null,trap:null,rivalET:null,marks:{},top:0,dist:0,zeroStart:null,resultShown:false,offRoad:false,newBest:false,everScraped:false,paidKm:0,paidTop:0,bestET:store.get(bestKey(),null),held:0,snap:JSON.parse(JSON.stringify({m:career.medals||{},t:career.tokens||{}}))};
   if(state.mode==='track'){buildTrack(TRACKS.find(t=>t.id===state.track)||TRACKS[0]);const {pts,tan,right}=track;
     const grid=[[3.5,-8],[-3.5,-16],[3.5,-24],[-3.5,-32]];
     const pidx=track.n-6;player.veh.reset(pts[pidx].x+right[pidx].x*grid[0][0],pts[pidx].z+right[pidx].z*grid[0][0],Math.atan2(tan[pidx].x,tan[pidx].z));player.veh.hy=pts[pidx].y;game.idx=game.lastIdx=pidx;
@@ -14632,7 +14635,7 @@ function resetCar(){const v=player.veh;if(game.mode==='track'){const {pts,tan}=t
   else if(game.mode==='infinite'){v.reset(3.8,v.z,0);game.zeroStart=null;game.marks={};}else{v.reset(3.8,Math.min(v.z,0),0);}}
 function toggleUnits(){state.units=state.units==='mph'?'km/h':'mph';store.set('units',state.units);$('#unit').textContent=state.units;}
 function togglePause(){if(state.screen==='race'){state.screen='pause';$('#pause').hidden=false;}else if(state.screen==='pause'){state.screen='race';$('#pause').hidden=true;last=performance.now();}}
-function toGarage(){setLook(false);state.screen='garage';$('#hud').hidden=true;$('#pause').hidden=true;$('#results').hidden=true;$('#garage').hidden=false;game=null;player.veh=null;challenge=null;showcase();updateBestLine();saveCareer();collectIncome();refreshCareerBadge();}
+function toGarage(){forfeitRace();setLook(false);state.screen='garage';$('#hud').hidden=true;$('#pause').hidden=true;$('#results').hidden=true;$('#garage').hidden=false;game=null;player.veh=null;challenge=null;showcase();updateBestLine();saveCareer();collectIncome();refreshCareerBadge();}
 let shopGrp='Paint & trim';
 function renderShop(){
   const c=CARS[state.carIdx],eq=equipFor(c.id);
@@ -14793,7 +14796,7 @@ $('#garagesBtn').onclick=()=>{if(!$('#decor').hidden)closeDecor();garagePreview=
 $('#garagesClose').onclick=()=>{$('#garages').hidden=true;const was=garagePreview,vp=viewPreview;garagePreview=null;garageArmed=null;viewPreview=null;viewArmed=null;if((was&&was!==currentGarage().id)||vp)showcase();};
 $('#shopClose').onclick=()=>{$('#shop').hidden=true;};
 function openRaceMenu(){challenge=null;const c=CARS[state.carIdx];if(!carOwned(c)){buyCar(c);return;}if(!$('#life').hidden)closeLife();if(!$('#decor').hidden)closeDecor();if(!$('#garages').hidden)$('#garagesClose').onclick();$('#displays').hidden=true;renderTracks();updateBestLine();$('#raceMenu').hidden=false;}
-$('#go').onclick=openRaceMenu;$('#raceStart').onclick=startRace;$('#raceBack').onclick=()=>{$('#raceMenu').hidden=true;};$('#dmgToggle').onclick=()=>{state.damage=!state.damage;store.set('damage',state.damage);$('#dmgToggle').textContent=state.damage?'Damage on':'Damage off';};$('#dmgToggle').textContent=state.damage?'Damage on':'Damage off';$('#resumeBtn').onclick=togglePause;$('#restartBtn').onclick=()=>{startRace();};$('#garageBtn').onclick=toGarage;$('#againBtn').onclick=()=>startRace();$('#garageBtn2').onclick=toGarage;
+$('#go').onclick=openRaceMenu;$('#raceStart').onclick=startRace;$('#raceBack').onclick=()=>{$('#raceMenu').hidden=true;};$('#dmgToggle').onclick=()=>{state.damage=!state.damage;store.set('damage',state.damage);$('#dmgToggle').textContent=state.damage?'Damage on':'Damage off';};$('#dmgToggle').textContent=state.damage?'Damage on':'Damage off';$('#resumeBtn').onclick=togglePause;$('#restartBtn').onclick=()=>{forfeitRace();startRace();};$('#garageBtn').onclick=toGarage;$('#againBtn').onclick=()=>startRace();$('#garageBtn2').onclick=toGarage;
 
 /* ---------- Race logic ---------- */
 function updateRace(dt){
@@ -14920,7 +14923,8 @@ function payDrag(g,r){
   return {total:Math.round(total),lines};
 }
 function payRow(p){
-  award(p.total,'');
+  const h=game&&game.held||0;if(h){game.held=0;p.lines.unshift(['During the race',h]);p.total+=h;}
+  if(game)game.paying=true;award(p.total,'');if(game)game.paying=false;
   return `<div style="grid-column:1/-1"><span class="label">Earned</span><b class="acc">${fmtMoney(p.total)}</b>`+
     `<div style="color:var(--muted);font-size:12px;margin-top:4px">${p.lines.map(([l,v])=>l+(v?' '+(v<0?'−':'+')+fmtMoney(Math.abs(v)):'')).join(' · ')}</div></div>`;
 }
