@@ -10055,7 +10055,7 @@ function auBoard(){const cv=document.createElement('canvas');cv.width=256;cv.hei
 
 /* ---- one 800 m block of motorway furniture and the route's scenery, built three times over with different seeds ---- */
 const AU_BL=800;
-function auBlock(R,gi,night){const g=new THREE.Group(),W=WALL.infinite,th=R.theme,dark=tdM(0x2a2d33,{roughness:.6,metalness:.4}),conc=tdM(0x9a9890,{roughness:.9});let seed=31+gi*977+th.length*13;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+function auBlock(R,gi,night){const g=new THREE.Group(),W=WALL.infinite,th=R.theme,sk=R.scene||R.theme,dark=tdM(0x2a2d33,{roughness:.6,metalness:.4}),conc=tdM(0x9a9890,{roughness:.9});let seed=31+gi*977+th.length*13+(R.seed||0)*7919;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
   g.userData.td=1;const box=(m,w,h,d,x,y,z,sh)=>tdBox(g,m,w,h,d,x,y,z,sh);
   /* the other carriageway beyond the central reservation, its own barrier and lines */
   const opp=new THREE.Mesh(new THREE.PlaneGeometry(16,AU_BL+2),tdM(th==='synth'?0x1a0a2a:0x34363b,{roughness:.9}));opp.rotation.x=-Math.PI/2;opp.position.set(-22,.01,AU_BL/2);opp.receiveShadow=true;g.add(opp);
@@ -10074,7 +10074,7 @@ function auBlock(R,gi,night){const g=new THREE.Group(),W=WALL.infinite,th=R.them
    box(conc,50,1,16,-9,7.2,z,true);box(glass,50,4.4,15,-9,9.9,z,true);box(conc,51,.6,16.4,-9,12.4,z,true);[-33,-12.2,13.2].forEach(x=>box(conc,1.4,7.2,8,x,3.6,z,true));
    const t=tdSign('RISTORO','#c8281e','#ffffff'),sm=new THREE.MeshStandardMaterial({map:t,emissive:0xffffff,emissiveMap:t,emissiveIntensity:.5});[1,-1].forEach(s=>{const p=new THREE.Mesh(new THREE.PlaneGeometry(18,2.2),sm);p.position.set(-9,13.9,z+s*8.25);if(s<0)p.rotation.y=Math.PI;g.add(p);box(dark,18.4,2.4,.2,-9,13.9,z+s*8.1);});}
   /* on the mountain and coast roads, every third block goes through a tunnel */
-  if(gi===2&&(th==='alpine'||th==='coast')){const z0=AU_BL*.2,len=AU_BL*.36,tm=tdM(0x6a6a66,{roughness:.9,side:THREE.DoubleSide}),rock=tdM(th==='alpine'?0x5a6070:0x8a7a62,{roughness:1,flatShading:true});
+  if(gi===2&&(R.tunnel!=null?R.tunnel:(th==='alpine'||th==='coast'))){const z0=AU_BL*.2,len=AU_BL*.36,tm=tdM(0x6a6a66,{roughness:.9,side:THREE.DoubleSide}),rock=tdM(th==='alpine'?0x5a6070:0x8a7a62,{roughness:1,flatShading:true});
    [[0,14],[-22,13]].forEach(([x,r])=>{const tube=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,28,1,true,-Math.PI/2,Math.PI).rotateX(-Math.PI/2),tm);tube.position.set(x,0,z0+len/2);g.add(tube);});
    const lt=new THREE.InstancedMesh(new THREE.BoxGeometry(.5,.12,2.4),dsB(0xffe2b0),Math.ceil(len/10)*2),m=new THREE.Matrix4();let k=0;for(let z=z0+4;z<z0+len;z+=10){m.makeTranslation(-5,12.4,z);lt.setMatrixAt(k++,m);m.makeTranslation(5,12.4,z);lt.setMatrixAt(k++,m);}lt.count=k;g.add(lt);
    [z0,z0+len].forEach(z=>{box(conc,48,4,3,-9,15.5,z,true);box(rock,26,24,6,27,12,z,true);box(rock,26,24,6,-48,12,z,true);box(rock,48,8,6,-9,21,z,true);const hill=new THREE.Mesh(new THREE.SphereGeometry(1,16,10),rock);hill.scale.set(60,34,len*.36);hill.position.set(-9,0,z0+len/2);if(z===z0)g.add(hill);});}
@@ -10083,30 +10083,31 @@ function auBlock(R,gi,night){const g=new THREE.Group(),W=WALL.infinite,th=R.them
     list.forEach((a,i)=>{m.compose(v.set(a[0],a[1],a[2]),q.setFromEuler(e.set(0,a[3]||0,0)),s.set(a[4]||1,a[5]||a[4]||1,a[6]||a[4]||1));im.setMatrixAt(i,m);if(a[7]!=null)im.setColorAt(i,c.set(a[7]));});
     if(im.instanceColor)im.instanceColor.needsUpdate=true;im.castShadow=!!shadow;g.add(im);return im;};
   const side=()=>rnd()<.5?-1:1,farX=(s,a,b)=>s>0?W+a+rnd()*(b-a):-(31+a+rnd()*(b-a));
-  if(th==='forest'){const fh=[],rf=[],cy=[];for(let k=0;k<3;k++){const s=side(),x=farX(s,30,90),z=rnd()*AU_BL;fh.push([x,3,z,rnd()*3,12,6,9,0xe8d8b8]);rf.push([x,6.6,z,0,1,1,1]);}
+  if(sk==='forest'){const fh=[],rf=[],cy=[];for(let k=0;k<3;k++){const s=side(),x=farX(s,30,90),z=rnd()*AU_BL;fh.push([x,3,z,rnd()*3,12,6,9,0xe8d8b8]);rf.push([x,6.6,z,0,1,1,1]);}
     for(let k=0;k<22;k++){const s=side(),x=farX(s,12,40),z=(k%11)*14+rnd()*AU_BL*.6;cy.push([x,0,z,0,.9+rnd()*.4,1+rnd()*.5,.9+rnd()*.4]);}
     I(new THREE.BoxGeometry(1,1,1),tdM(0xffffff,{roughness:.9}),fh,true);I(new THREE.ConeGeometry(8.5,3.2,4).rotateY(Math.PI/4),tdM(0xa8483a,{roughness:.8}),rf.map(r=>[r[0],r[1]+1.6,r[2]]));
     I(new THREE.ConeGeometry(1.1,9,8).translate(0,4.5,0),tdM(0x2a4a26,{roughness:1}),cy);}
-  else if(th==='coast'){const pt=[],pc=[],cl=[];for(let k=0;k<26;k++){const x=W+8+rnd()*40,z=rnd()*AU_BL,s=.8+rnd()*.5;pt.push([x,0,z,0,1,s,1]);pc.push([x,0,z,rnd()*6,s]);}
+  else if(sk==='coast'){const pt=[],pc=[],cl=[];for(let k=0;k<26;k++){const x=W+8+rnd()*40,z=rnd()*AU_BL,s=.8+rnd()*.5;pt.push([x,0,z,0,1,s,1]);pc.push([x,0,z,rnd()*6,s]);}
     for(let k=0;k<14;k++){const z=k*AU_BL/14+rnd()*30,h=24+rnd()*50;cl.push([-(60+rnd()*20),h/2-4,z,rnd()*.6,22+rnd()*16,h,40+rnd()*20]);}   // the cliffs stand clear of the other carriageway
     I(new THREE.CylinderGeometry(.16,.3,7.5,6).translate(0,3.75,0),tdM(0x7a5a3a,{roughness:1}),pt);I(frondGeo().clone().translate(0,7.4,0),tdM(0x2f7a3e,{roughness:1}),pc);
     I(new THREE.DodecahedronGeometry(.6,1),tdM(0x9a8668,{roughness:1,flatShading:true}),cl,true);}
-  else if(th==='alpine'){const tr=[],sb=[],ch=[];for(let k=0;k<70;k++){const s=side(),x=farX(s,6,90),z=rnd()*AU_BL;tr.push([x,0,z,rnd()*6,.8+rnd()*.8]);}
+  else if(sk==='alpine'){const tr=[],sb=[],ch=[];for(let k=0;k<70;k++){const s=side(),x=farX(s,6,90),z=rnd()*AU_BL;tr.push([x,0,z,rnd()*6,.8+rnd()*.8]);}
     for(let z=0;z<AU_BL;z+=9)[W+1.4,-(31.6)].forEach(x=>sb.push([x+(rnd()-.5)*.6,0,z,0,1+rnd()*.5,.5+rnd()*.3,2+rnd()]));
     for(let k=0;k<3;k++){const s=side();ch.push([farX(s,30,70),2.5,rnd()*AU_BL,rnd()*3,9,5,8,0x6a4a32]);}
     const fg=firGeo(true);fg.translate(0,3.6,0);I(fg,new THREE.MeshStandardMaterial({color:0xffffff,vertexColors:true,roughness:1}),tr);I(new THREE.SphereGeometry(1,10,8),tdM(0xf4f8fc,{roughness:.8}),sb);
     I(new THREE.BoxGeometry(1,1,1),tdM(0xffffff,{roughness:.85}),ch,true);I(new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial({color:0xffc87a}),ch.map(c=>[c[0],c[1]+.4,c[2],c[3],c[4]+.1,1.2,c[6]*.5]));}
-  else if(th==='city'){const win=tdTex('dwin',()=>canvasTex(128,256,gg=>{gg.fillStyle='#0c0e14';gg.fillRect(0,0,128,256);for(let y=4;y<256;y+=16)for(let x=4;x<128;x+=16){const r=Math.random();gg.fillStyle=r<.45?'#141824':r<.8?'#ffd9a0':'#a8d0ff';gg.fillRect(x,y,10,10);}}));
+  else if(sk==='city'){const win=tdTex('dwin',()=>canvasTex(128,256,gg=>{gg.fillStyle='#0c0e14';gg.fillRect(0,0,128,256);for(let y=4;y<256;y+=16)for(let x=4;x<128;x+=16){const r=Math.random();gg.fillStyle=r<.45?'#141824':r<.8?'#ffd9a0':'#a8d0ff';gg.fillRect(x,y,10,10);}}));
     const tw=[];[-1,1].forEach(s=>{for(let z=0;z<AU_BL;){const w=16+rnd()*18,h=26+rnd()*110,d=16+rnd()*16;tw.push([s>0?W+28+d/2+rnd()*8:-(44+d/2+rnd()*8),h/2,z+w/2,0,d,h,w]);z+=w+4+rnd()*10;}});
     I(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial({map:win,emissive:0xffffff,emissiveMap:win,emissiveIntensity:.85,roughness:.6}),tw);
     const bar=new THREE.Mesh(new THREE.PlaneGeometry(AU_BL,4),new THREE.MeshStandardMaterial({color:0x9ad0ff,transparent:true,opacity:.28,roughness:.1,metalness:.3,side:THREE.DoubleSide,depthWrite:false}));bar.rotation.y=Math.PI/2;bar.position.set(W+1.9,2.8,AU_BL/2);g.add(bar);
     const neon=[0xff2fa0,0x2fe8ff,0xffa02f,0x9a5cff];for(let k=0;k<6;k++){const s=side(),p=new THREE.Mesh(new THREE.PlaneGeometry(9+rnd()*6,2+rnd()),dsB(neon[k%4]));p.position.set(s>0?W+27.6:-43.6,8+rnd()*20,rnd()*AU_BL);p.rotation.y=s>0?-Math.PI/2:Math.PI/2;g.add(p);}}
-  else if(th==='desert'){const me=[],ca=[],rk=[];for(let k=0;k<5;k++){const s=side(),r=10+rnd()*22;me.push([farX(s,60,240),0,rnd()*AU_BL,rnd()*6,r,18+rnd()*50,r*(.7+rnd()*.6)]);}
+  else if(sk==='desert'){const me=[],ca=[],rk=[];for(let k=0;k<5;k++){const s=side(),r=10+rnd()*22;me.push([farX(s,60,240),0,rnd()*AU_BL,rnd()*6,r,18+rnd()*50,r*(.7+rnd()*.6)]);}
     for(let k=0;k<30;k++){const s=side();ca.push([farX(s,4,70),0,rnd()*AU_BL,rnd()*6,1,3+rnd()*4,1]);}for(let k=0;k<26;k++){const s=side(),sc=.4+rnd()*1.4;rk.push([farX(s,4,90),sc*.4,rnd()*AU_BL,rnd()*6,sc,sc*.6,sc]);}
     const band=tdTex('aumesa',()=>canvasTex(8,128,gg=>{for(let y=0;y<128;y+=4){const v=150+Math.random()*90;gg.fillStyle=`rgb(${v},${v*.82|0},${v*.72|0})`;gg.fillRect(0,y,8,4);}},1,3));
     I(new THREE.CylinderGeometry(1,1.25,1,8,3).translate(0,.5,0),new THREE.MeshStandardMaterial({map:band,color:0xc88a5a,roughness:.95,flatShading:true}),me,true);
     I(new THREE.CylinderGeometry(.32,.38,1,8).translate(0,.5,0),tdM(0x4a6a32,{roughness:.9}),ca);I(new THREE.DodecahedronGeometry(2.4,0),tdM(0xb08a60,{roughness:1}),rk);}
-  else if(th==='synth'){for(let z=60;z<AU_BL;z+=160){const r=new THREE.Mesh(new THREE.TorusGeometry(15,.25,8,48,Math.PI),dsB(z%320<160?0xff2fa0:0x2fe8ff));r.position.set(-6,0,z);g.add(r);}}
+  else if(sk==='synth'){for(let z=60;z<AU_BL;z+=160){const r=new THREE.Mesh(new THREE.TorusGeometry(15,.25,8,48,Math.PI),dsB(z%320<160?0xff2fa0:0x2fe8ff));r.position.set(-6,0,z);g.add(r);}}
+  if(typeof auSceneHook==='function')auSceneHook(g,R,gi,night,rnd);
   return g;}
 
 /* ---- the far scenery that moves with you: the sea, the mountains, the skyline ---- */
@@ -13730,6 +13731,508 @@ handlingTop=Math.max(...CARS.filter(c=>c.id!=='jesko-attack').map(cornerG));
    The handling score reads the same ceiling, so the specs panel shows what the car will really do. */
 {const cg=cornerG;cornerG=c=>{const ml=(c.mu||1)*PHYS.lat*(c.grip||1)*(c.tireK||1),cap=6.6;return ml>cap?cg(c)*cap/ml:cg(c);};}
 handlingTop=Math.max(...CARS.filter(c=>c.id!=='jesko-attack').map(cornerG));
+/* ---- Autostrada regions: what stands beside the road in each one ----
+   A builder lays its scenery into one 800 m block g (local z 0..AU_BL): r is the block's
+   seeded random, gi which of the three block variants it is, night how lit the windows
+   are (0 day .. 1 night). Right of the road starts past the barrier; left starts beyond
+   the other carriageway (auX). Everything is instanced (fxI) and shares its geometry. */
+const AUG={},aug=(k,f)=>AUG[k]||(AUG[k]=f());
+const auS=r=>r()<.5?-1:1,auX=(r,s,a,b)=>s>0?WALL.infinite+a+r()*(b-a):-(31+a+r()*(b-a)),auPick=(r,a)=>a[(r()*a.length)|0];
+const auBoxG=()=>aug('box',()=>new THREE.BoxGeometry(1,1,1).translate(0,.5,0)),auBallG=()=>aug('ball',()=>new THREE.SphereGeometry(1,14,10)),
+  auRoofG=()=>aug('roof',()=>new THREE.ConeGeometry(.72,1,4).rotateY(Math.PI/4).translate(0,.5,0)),auConeG=()=>aug('cone',()=>new THREE.ConeGeometry(1,1,8).translate(0,.5,0)),
+  auCylG=()=>aug('cyl',()=>new THREE.CylinderGeometry(1,1,1,12).translate(0,.5,0)),auFlatG=()=>aug('flat',()=>new THREE.PlaneGeometry(1,1).rotateX(-Math.PI/2));
+const auFlatM=c=>tdM(c,{roughness:1,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4});   // patches laid on the ground
+/* walls with windows: the first map tints with the house's colour, the second lights only the lit windows */
+function auWinM(k,nx,ny,lit,night){const T=tdTex('auwin'+k,()=>{const mk=em=>canvasTex(128,128,g=>{g.fillStyle=em?'#000':'#fff';g.fillRect(0,0,128,128);const w=128/nx,h=128/ny;
+    for(let y=0;y<ny;y++)for(let x=0;x<nx;x++){const on=((x*37+y*61+nx*7)%100)/100<lit;g.fillStyle=on?'#ffd08a':em?'#000':'#4a4a52';g.fillRect(x*w+w*.28,y*h+h*.25,w*.44,h*.5);}},1,1);return [mk(0),mk(1)];});
+  return tdM(0xffffff,{map:T[0],emissive:0xffffff,emissiveMap:T[1],emissiveIntensity:.05+night*.95,roughness:.85});}
+/* houses: [x,z,w,h,d,colour,roof colour or null for a flat roof, ry] */
+function auHouses(g,list,win){if(!list.length)return;fxI(g,auBoxG(),win,list.map(a=>[a[0],a[8]||0,a[1],a[7]||0,a[2],a[3],a[4],a[5]]),true);
+  const roofs=list.filter(a=>a[6]!=null);if(roofs.length)fxI(g,auRoofG(),tdM(0xffffff,{roughness:.8}),roofs.map(a=>[a[0],(a[8]||0)+a[3],a[1],a[7]||0,a[2]*1.02,Math.min(a[2],a[4])*.38,a[4]*1.02,a[6]]),true);}
+const auTrees=(g,list,trunk,crown)=>{fxI(g,aug('trunk',()=>new THREE.CylinderGeometry(1,1,1,6,1,true).translate(0,.5,0)),tdM(trunk,{roughness:1}),list.map(a=>[a[0],0,a[1],0,Math.min(.45,a[2]*.2),a[3],Math.min(.45,a[2]*.2)]));fxI(g,aug('crown',()=>new THREE.SphereGeometry(1,8,6)),tdM(0xffffff,{roughness:1}),list.map(a=>[a[0],a[3]+a[4]*.5,a[1],a[6]||0,a[2],a[4],a[2]*(a[5]||1),crown]),true);};
+const auPalms=(g,list,trunk,frond)=>{fxI(g,aug('palmT',()=>new THREE.CylinderGeometry(.16,.3,7.5,6).translate(0,3.75,0)),tdM(trunk,{roughness:1}),list.map(a=>[a[0],0,a[1],0,1,a[2],1]));
+  fxI(g,aug('palmF',()=>frondGeo().clone().translate(0,7.4,0)),tdM(frond,{roughness:1}),list.map(a=>[a[0],0,a[1],a[3]||0,a[2]]));};
+const AU_SCENES={
+/* the woods of the Appennino: firs either side, as the old road had */
+firs(g,r){const L=[];for(let k=0;k<140;k++){const s=auS(r),sc=.7+r()*.9;L.push([auX(r,s,4,80),0,r()*AU_BL,r()*6,sc,sc*(.9+r()*.3),sc,auPick(r,[0x1d3a22,0x22422a,0x18321c,0x2a4a2a])]);}
+  fxI(g,aug('fir',()=>firGeo(false).translate(0,3.6,0)),tdM(0xffffff,{roughness:1}),L,true);fxI(g,aug('firT',()=>new THREE.CylinderGeometry(.18,.26,1.6,6).translate(0,.8,0)),tdM(0x3a2a1a,{roughness:1}),L.map(a=>[a[0],0,a[2],0,a[4],1,a[4]]));},
+/* Val d'Orcia: vineyards in rows, cypress avenues up to the farms, olive groves, a hill town with its tower */
+vines(g,r,gi,night){const rows=[],cy=[],ol=[],hs=[],hay=[];
+  for(let p=0;p<8;p++){const s=auS(r),x0=auX(r,s,6,150),z0=r()*(AU_BL-70),n=8+(r()*9|0),len=30+r()*55;for(let k=0;k<n;k++)rows.push([x0+s*len/2,0,z0+k*2.8,0,len,1.2,.55,auPick(r,[0x3e5a2a,0x4a6a2e,0x56702e])]);}
+  for(let a=0;a<2;a++){const s=auS(r),z=r()*AU_BL,x1=s*(90+r()*90);for(let x=s*(WALL.infinite+8);Math.abs(x)<Math.abs(x1);x+=s*11)[-4,4].forEach(o=>cy.push([x,0,z+o,0,1.1,9+r()*3,1.1]));hs.push([x1+s*8,z,14,7,10,0xe8d0a8,0xa8483a,r()*.4]);}
+  for(let p=0;p<3;p++){const s=auS(r),x0=auX(r,s,20,180),z0=r()*(AU_BL-60);for(let i=0;i<5;i++)for(let j=0;j<6;j++)ol.push([x0+s*i*9+(r()-.5)*2,z0+j*9+(r()-.5)*2,2.4+r()*.8,1.6,2.2,1.2,r()*6]);}
+  for(let k=0;k<14;k++){const s=auS(r),x=auX(r,s,20,120),z=r()*AU_BL;hay.push([x,.8,z,r()*3,.8,.9,.8,0xc8a050,0,Math.PI/2]);}
+  if(gi!==1){const s=gi?1:-1,cx=s*(170+r()*60),cz=200+r()*400;fxI(g,auBallG(),tdM(0x8a9a5a,{roughness:1}),[[cx,-14,cz,0,70,30,60]]);
+    for(let k=0;k<16;k++){const a=r()*6.28,d=r()*34;hs.push([cx+Math.cos(a)*d,cz+Math.sin(a)*d,7+r()*6,6+r()*5,7+r()*5,auPick(r,[0xe8d4b0,0xd8b888,0xe0c090,0xf0e0c8]),0xa8483a,r()*.5,12]);}
+    hs.push([cx,cz,5,24,5,0xd8c098,0x8a4a3a,0,14]);}
+  fxI(g,auBoxG(),tdM(0xffffff,{roughness:1}),rows);fxI(g,auConeG(),tdM(0x2a4a26,{roughness:1}),cy,true);
+  auTrees(g,ol,0x5a4a3a,0x7a8a5a);fxI(g,aug('bale',()=>new THREE.CylinderGeometry(1,1,1.4,12)),tdM(0xffffff,{roughness:1}),hay,true);auHouses(g,hs,auWinM('tus',3,2,.5,night));},
+/* the Po valley in the fog: a patchwork of fields, rows of poplars, farmsteads with their silos, a canal */
+plain(g,r,gi,night){const F=[],pop=[],bale=[],hs=[],silo=[];
+  for(let k=0;k<16;k++){const s=auS(r),w=60+r()*120,d=60+r()*180;F.push([s>0?WALL.infinite+6+w/2+r()*240:-(33+w/2+r()*240),.05,r()*AU_BL,0,w,1,d,auPick(r,[0x5a4632,0xc8b060,0x5a7a34,0x8a9a4a,0x6a5a3a])]);}
+  for(let l=0;l<5;l++){const s=auS(r),z=r()*AU_BL,x0=auX(r,s,10,60),n=8+(r()*12|0);for(let k=0;k<n;k++)pop.push([x0+s*k*7,z+(r()-.5),1.2+r()*.3,2,6+r()*2,1,0]);}
+  for(let l=0;l<3;l++){const s=auS(r),x=auX(r,s,30,200),z0=r()*AU_BL;for(let k=0;k<12;k++)pop.push([x+(r()-.5),z0+k*7,1.2+r()*.3,2,6+r()*2,1,0]);}
+  for(let k=0;k<24;k++){const s=auS(r);bale.push([auX(r,s,15,200),.85,r()*AU_BL,r()*3,.85,1.4,.85,0xd8b050,0,Math.PI/2]);}
+  for(let f=0;f<2;f++){const s=f?1:-1,x=s*(70+r()*120),z=150+r()*500;hs.push([x,z,30,10,14,0xc8a87a,0xa8503a,0],[x+s*22,z-18,14,8,10,0xe8dcc0,0xa8503a,Math.PI/2],[x-s*4,z+22,18,6,10,0xb89878,0x8a4a3a,0]);
+    for(let k=0;k<3;k++)silo.push([x+s*(10+k*7),0,z-30,0,3,18,3]);}
+  fxI(g,auFlatG(),auFlatM(0xffffff),F);auTrees(g,pop,0x6a6a5a,0x5a7a3a);fxI(g,aug('bale',()=>new THREE.CylinderGeometry(1,1,1.4,12)),tdM(0xffffff,{roughness:1}),bale,true);
+  fxI(g,auCylG(),tdM(0xc8ccd0,{roughness:.5,metalness:.4}),silo,true);fxI(g,aug('dome',()=>new THREE.SphereGeometry(1,12,8,0,6.29,0,Math.PI/2)),tdM(0xc8ccd0,{roughness:.5,metalness:.4}),silo.map(a=>[a[0],18,a[2],0,3,2,3]));
+  auHouses(g,hs,auWinM('farm',4,2,.3,night));const can=new THREE.Mesh(new THREE.PlaneGeometry(7,AU_BL).rotateX(-Math.PI/2),tdM(0x4a6a72,{roughness:.1,metalness:.3,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4}));can.position.set(WALL.infinite+16,.06,AU_BL/2);g.add(can);},
+/* Campania by night: lit towns under the umbrella pines, a domed church, the lamps of the streets */
+town(g,r,gi,night){const hs=[],pin=[],lamp=[];
+  for(let c=0;c<4;c++){const s=c%2?1:-1,cx=auX(r,s,45,150),cz=r()*AU_BL;for(let k=0;k<14;k++){const w=8+r()*6,x=cx+(r()-.5)*70;hs.push([s>0?Math.max(x,WALL.infinite+6+w*.75):Math.min(x,-(32+w*.75)),cz+(r()-.5)*90,w,6+r()*9,8+r()*5,auPick(r,[0xf0e4cc,0xe8c890,0xe8b8a0,0xf4f0e8,0xd8c0a0]),null,(r()<.5?0:Math.PI/2)]);}}
+  for(let k=0;k<26;k++){const s=auS(r);pin.push([auX(r,s,6,120),r()*AU_BL,4.5+r()*1.5,8+r()*3,1.5+r()*.5,1]);}
+  for(let z=10;z<AU_BL;z+=36)lamp.push([WALL.infinite+22,4.5,z,0,.4]);
+  if(gi===1){const s=-1,x=-(70+r()*40),z=300+r()*200;hs.push([x,z,16,12,26,0xf2ead8,null,0]);fxI(g,auCylG(),tdM(0xf2ead8,{roughness:.7}),[[x,12,z,0,6,5,6]]);
+    fxI(g,aug('dome',()=>new THREE.SphereGeometry(1,12,8,0,6.29,0,Math.PI/2)),tdM(0x6a8aa8,{roughness:.4,metalness:.3}),[[x,17,z,0,6.2,6,6.2]]);}
+  auHouses(g,hs,auWinM('town',3,3,.45,night));auTrees(g,pin,0x5a4a3a,0x2f4a2a);fxI(g,auBallG(),fxGlow(0xffc87a),lamp);fxI(g,auBoxG(),tdM(0x2a2a2e),lamp.map(a=>[a[0],0,a[2],0,.12,4.5,.12]));},
+/* the Cinque Terre: villages in bright colours stacked up the slope, terraces, boats at the shore */
+villages(g,r,gi,night){const hs=[],ter=[],boat=[],rock=[];const cols=[0xe8a060,0xe8d070,0xd86a5a,0x9ac8c0,0xf0e0c8,0xe89a8a,0xc8d890];
+  for(let v=0;v<(gi===1?1:2);v++){const cz=120+r()*560;for(let j=0;j<6;j++){const x=-(38+j*11),y=j*5.5;ter.push([x,0,cz,0,11,y+.2,70+r()*20,0x6a6a4a]);
+      for(let k=0;k<6;k++)hs.push([x+(r()-.5)*3,cz-30+k*11+(r()-.5)*3,7+r()*3,9+r()*6,8+r()*2,auPick(r,cols),0x4a4a52,0,y]);}}
+  for(let t=0;t<6;t++){const z0=r()*AU_BL;for(let j=0;j<5;j++)ter.push([-(36+j*10),0,z0,0,10,j*4+.4,40,0x5a6a32]);}
+  for(let k=0;k<10;k++)boat.push([82+r()*90,.4,r()*AU_BL,(r()-.5)*.6,2.2,1,6,auPick(r,[0x2a6ab0,0xd8402a,0xf2f2ea,0x3a8a4a])]);
+  for(let k=0;k<40;k++){const sc=1+r()*3;rock.push([73+r()*6,sc*.2,r()*AU_BL,r()*6,sc,sc*.7,sc]);}
+  fxI(g,auBoxG(),tdM(0xffffff,{roughness:1}),ter,true);auHouses(g,hs,auWinM('cinq',3,3,.35,night));fxI(g,auBoxG(),tdM(0xffffff,{roughness:.6}),boat);
+  fxI(g,auBoxG(),tdM(0xf2f2ea,{roughness:.6}),boat.map(a=>[a[0],a[1]+1,a[2]-1,a[3],1.4,1,2]));fxI(g,new THREE.DodecahedronGeometry(1,0),tdM(0x7a7060,{roughness:1,flatShading:true}),rock);},
+/* the port of Genoa: container stacks on the quay, cranes over the water, ships alongside, the Lanterna */
+port(g,r,gi,night){const ct=[],leg=[],beam=[],hull=[],top=[],shed=[];const cols=[0xc8281e,0x1e4fd0,0x2a8a4a,0xe8a020,0x8a8a90,0xd86a2a,0x5a3a8a,0xe8e8e8];
+  for(let b=0;b<6;b++){const x0=26+r()*50,z0=r()*(AU_BL-90);for(let i=0;i<3;i++)for(let j=0;j<6;j++){const n=1+(r()*4|0);for(let t=0;t<n;t++)ct.push([x0+i*2.7,t*2.65,z0+j*13,0,2.5,2.6,12.2,auPick(r,cols)]);}}
+  for(let c=0;c<3;c++){const z=80+c*260+r()*60,col=c%2?0x1e4fd0:0xc8281e;[[100,-9],[100,9],[124,-9],[124,9]].forEach(([x,o])=>leg.push([x,0,z+o,0,1.6,46,1.6,col]));beam.push([112,44,z,0,30,3,22,col],[150,40,z,0,60,2.4,3,col]);}
+  if(gi!==2){const z=200+r()*300;hull.push([152,-2,z,0,26,13,190,auPick(r,[0x2a2a3a,0x8a2a22,0x1a3a6a])]);top.push([152,11,z-80,0,22,14,16,0xf2f2ea]);
+    for(let i=0;i<4;i++)for(let j=0;j<9;j++)ct.push([140+i*7,11+((i+j)%3)*2.6,z-60+j*14,0,6.5,2.6,12.5,auPick(r,cols)]);}
+  for(let k=0;k<4;k++){const w=40+r()*40;shed.push([-(40+w/2+r()*40),r()*AU_BL,w,10+r()*6,30+r()*30,auPick(r,[0x8a9098,0x6a7a8a,0xa8a090]),null,0]);}
+  fxI(g,auBoxG(),tdM(0xffffff,{roughness:.6,metalness:.3}),ct.concat(leg,beam,hull,top),true);auHouses(g,shed,auWinM('ware',8,2,.2,night));
+  if(gi===1){fxI(g,auBoxG(),tdM(0xe8e2d4,{roughness:.6}),[[-60,0,400,0,7,58,7],[-60,58,400,0,5,8,5]],true);fxI(g,auBallG(),fxGlow(0xfff0c0),[[-60,63,400,0,2.4]]);}},
+/* the Côte d'Azur at blue hour: a palm promenade, villas lit on the hillside, yachts at anchor */
+villas(g,r,gi,night){const pal=[],vil=[],ya=[],lamp=[];
+  for(let z=6;z<AU_BL;z+=18)pal.push([WALL.infinite+7,z+(r()-.5)*3,.9+r()*.3,r()*6]);for(let z=15;z<AU_BL;z+=36)lamp.push([WALL.infinite+4,4.2,z,0,.35]);
+  for(let k=0;k<18;k++){const j=r()*5|0,w=12+r()*10;vil.push([-(44+j*16+r()*6),r()*AU_BL,w,7+r()*6,10+r()*6,auPick(r,[0xf4ece0,0xf0dcc0,0xe8c8b0,0xf8f4ec]),0xb85a3a,(r()-.5)*.4,j*6]);}
+  for(let k=0;k<12;k++)ya.push([90+r()*160,.6,r()*AU_BL,(r()-.5)*.5,4+r()*2,2,16+r()*12]);
+  auPalms(g,pal,0x6a5a4a,0x2a5a32);auHouses(g,vil,auWinM('villa',4,2,.6,night));fxI(g,auBoxG(),tdM(0xffffff,{roughness:1}),vil.map(a=>[a[0],0,a[1],a[7],a[2]+2,a[8],a[4]+2,0x6a6a52]));
+  fxI(g,auBallG(),tdM(0xf8f8f4,{roughness:.3,metalness:.2}),ya.map(a=>[a[0],a[1],a[2],a[3],a[4]*.5,a[5],a[6]*.5]));fxI(g,auBoxG(),tdM(0xe8e8ee,{roughness:.3}),ya.map(a=>[a[0],a[1]+.8,a[2],a[3],a[4]*.5,1.4,a[6]*.3]));
+  fxI(g,auBoxG(),fxGlow(0xffd8a0),ya.map(a=>[a[0],a[1]+1.3,a[2],a[3],a[4]*.52,.3,a[6]*.31]));fxI(g,auBallG(),fxGlow(0xffd08a),lamp);fxI(g,auBoxG(),tdM(0x2a2a2e),lamp.map(a=>[a[0],0,a[2],0,.12,4.2,.12]));},
+/* the Val d'Isarco at dawn: apple orchards in rows, a castle on its hill, an onion-domed church, wooden farms */
+orchard(g,r,gi,night){const ap=[],hs=[],cas=[];
+  for(let p=0;p<7;p++){const s=auS(r),x0=auX(r,s,6,120),z0=r()*(AU_BL-80);for(let i=0;i<5;i++)for(let j=0;j<10;j++)ap.push([x0+s*i*5,z0+j*5+(r()-.5),1.3+r()*.4,1.1,1.8,1,r()*6]);}
+  for(let k=0;k<6;k++){const s=auS(r);hs.push([auX(r,s,30,160),r()*AU_BL,10+r()*4,7,12,auPick(r,[0xe8dcc8,0xd8c0a0]),0x6a4a32,r()*.5]);}
+  if(gi!==2){const s=gi?1:-1,cx=s*(150+r()*80),cz=250+r()*300;fxI(g,auBallG(),tdM(0x5a6a3a,{roughness:1}),[[cx,-16,cz,0,50,36,46]]);
+    cas.push([cx,18,cz,0,9,26,9],[cx+12,18,cz+8,0,22,10,2],[cx-10,18,cz-6,0,2,10,20],[cx+4,18,cz-14,0,20,9,2]);
+    fxI(g,auRoofG(),tdM(0x4a4a52,{roughness:.7}),[[cx,44,cz,0,9.2,7,9.2]]);}
+  if(gi===1){const x=-(70+r()*30),z=500;hs.push([x,z,10,9,22,0xf4ece0,0x8a3a2a,0]);cas.push([x,0,z-14,0,5,24,5]);
+    fxI(g,auBallG(),tdM(0x3a6a4a,{roughness:.4,metalness:.4}),[[x,26.5,z-14,0,3.2,3.6,3.2]]);fxI(g,auConeG(),tdM(0x3a6a4a,{roughness:.4,metalness:.4}),[[x,29.5,z-14,0,.8,6,.8]]);}
+  auTrees(g,ap,0x5a4a3a,0x4a7a2a);auHouses(g,hs,auWinM('chalet',4,2,.4,night));fxI(g,auBoxG(),tdM(0xc8c0b0,{roughness:.9}),cas,true);},
+/* Lake Garda: olive trees and cypress on the shore, lemon houses on the terraces, sails out on the water */
+lake(g,r,gi,night){const ol=[],cy=[],sail=[],lim=[],hs=[];
+  for(let k=0;k<26;k++)ol.push([WALL.infinite+5+r()*18,r()*AU_BL,2+r()*.8,1.6,2,1.2,r()*6]);for(let k=0;k<14;k++)cy.push([WALL.infinite+4+r()*20,0,r()*AU_BL,0,1,9+r()*4,1]);
+  for(let k=0;k<12;k++)sail.push([60+r()*420,0,r()*AU_BL,r()*6]);
+  for(let t=0;t<4;t++){const z0=r()*(AU_BL-60),j=t%3;for(let k=0;k<8;k++)lim.push([-(40+j*12),0,z0+k*7]);}
+  for(let k=0;k<10;k++){const j=r()*4|0;hs.push([-(44+j*14+r()*6),r()*AU_BL,9+r()*5,8+r()*5,9+r()*4,auPick(r,[0xf0d8a8,0xe8c090,0xf4ece0,0xe8a878]),0xa8503a,(r()-.5)*.4,j*5]);}
+  auTrees(g,ol,0x5a4a3a,0x7a8a5a);fxI(g,auConeG(),tdM(0x2a4a26,{roughness:1}),cy,true);auHouses(g,hs,auWinM('garda',3,2,.4,night));fxI(g,auBoxG(),tdM(0xffffff,{roughness:1}),hs.map(a=>[a[0],0,a[1],a[7],a[2]+2,a[8],a[4]+2,0x7a7a5a]));
+  fxI(g,auBoxG(),tdM(0xf2f2ea,{roughness:.6}),sail.map(a=>[a[0],0,a[2],a[3],1.6,.9,6]));fxI(g,auCylG(),tdM(0xd8d8d8),sail.map(a=>[a[0],.9,a[2],0,.08,11,.08]));
+  fxI(g,aug('sail',()=>{const s=new THREE.BufferGeometry();s.setAttribute('position',new THREE.Float32BufferAttribute([0,1.5,0, 0,11,0, 0,1.5,4.6],3));s.computeVertexNormals();return s;}),tdM(0xffffff,{roughness:.8,side:THREE.DoubleSide}),sail.map(a=>[a[0],0,a[2],a[3]]));
+  fxI(g,auBoxG(),tdM(0xf2ece0,{roughness:.8}),lim.map(a=>[a[0],a[1],a[2],0,.6,6,.6]),true);fxI(g,auBoxG(),tdM(0x6a5040,{roughness:1}),lim.map(a=>[a[0],a[1]+6,a[2],0,10,.4,7.4]));},
+/* the glacier: seracs of blue ice, drifts, crevasses, the snow poles marking the road edge */
+glacier(g,r){const ice=[],dr=[],cr=[],pole=[];
+  for(let k=0;k<60;k++){const s=auS(r),h=4+r()*22,w=3+r()*8;ice.push([auX(r,s,4+w*1.2,160),h*.45,r()*AU_BL,r()*6,w,h,3+r()*8,auPick(r,[0xd8ecfa,0xc0dcf2,0xe8f4fc,0xa8ccea]),(r()-.5)*.3,(r()-.5)*.3]);}
+  for(let k=0;k<50;k++){const s=auS(r),w=4+r()*9;dr.push([auX(r,s,3+w*1.3,120),0,r()*AU_BL,0,w,1.5+r()*3,6+r()*12]);}
+  for(let k=0;k<14;k++){const s=auS(r);cr.push([auX(r,s,14,200),.06,r()*AU_BL,(r()-.5)*.4,2+r()*2,1,30+r()*60]);}
+  for(let z=0;z<AU_BL;z+=25)[-1,1].forEach(s=>pole.push([s*(WALL.infinite+1.6),0,z,0,.07,2.2,.07,z%50?0xd8281e:0xf2f2f2]));
+  fxI(g,new THREE.OctahedronGeometry(1,0),tdM(0xffffff,{roughness:.15,metalness:.1,emissive:0x2a4a6a,emissiveIntensity:.25,flatShading:true}),ice,true);
+  fxI(g,auBallG(),tdM(0xf6f9fc,{roughness:.8}),dr);fxI(g,auFlatG(),auFlatM(0x2a3a5a),cr);fxI(g,auBoxG(),tdM(0xffffff,{roughness:.5}),pole);},
+/* the industrial zone: sheds, chimneys with their red lights, gas holders, pipe racks, a cooling tower */
+industry(g,r,gi,night){const sh=[],ch=[],band=[],bea=[],gas=[],pipe=[];
+  for(let k=0;k<9;k++){const s=auS(r),w=40+r()*50;sh.push([s>0?WALL.infinite+20+w/2+r()*90:-(36+w/2+r()*90),r()*AU_BL,w,10+r()*10,30+r()*40,auPick(r,[0x8a9098,0x5a6a7a,0xa89a80,0x6a6a6a]),null,0]);}
+  for(let k=0;k<5;k++){const s=auS(r),x=auX(r,s,60,220),z=r()*AU_BL,h=60+r()*40;ch.push([x,0,z,0,2.6,h,2.6]);band.push([x,h*.78,z,0,2.75,h*.08,2.75],[x,h*.9,z,0,2.75,h*.07,2.75]);bea.push([x,h+.6,z,0,.9]);}
+  for(let k=0;k<4;k++){const s=auS(r);gas.push([auX(r,s,40,200),0,r()*AU_BL,0,14+r()*8,16+r()*8,14+r()*8]);}
+  pipe.push([WALL.infinite+12,6,AU_BL/2,0,4,.8,AU_BL],[WALL.infinite+12,7.4,AU_BL/2,0,4,.6,AU_BL]);for(let z=0;z<AU_BL;z+=24)pipe.push([WALL.infinite+12,0,z,0,.4,6,.4]);
+  auHouses(g,sh,auWinM('ind',10,2,.25,night));fxI(g,auCylG(),tdM(0xd8d4cc,{roughness:.8}),ch,true);fxI(g,auCylG(),tdM(0xc8281e,{roughness:.8}),band);fxI(g,auBallG(),fxGlow(0xff2a1a),bea);
+  fxI(g,auCylG(),tdM(0xe8e8e4,{roughness:.5,metalness:.3}),gas,true);fxI(g,auBoxG(),tdM(0x6a6e74,{roughness:.6,metalness:.5}),pipe);
+  if(gi===0){const pts=[];for(let i=0;i<=10;i++){const y=i/10;pts.push(new THREE.Vector2(26-12*Math.sin(y*Math.PI*.8)+y*4,y*70));}
+    const ct=new THREE.Mesh(new THREE.LatheGeometry(pts,28),tdM(0xb8b4ac,{roughness:.9,side:THREE.DoubleSide}));ct.position.set(-(120+r()*60),0,300+r()*200);g.add(ct);}
+  const lamp=[];for(let z=8;z<AU_BL;z+=40)lamp.push([-(33),5,z,0,.45]);fxI(g,auBallG(),fxGlow(0xffa040),lamp);fxI(g,auBoxG(),tdM(0x2a2a2e),lamp.map(a=>[a[0],0,a[2],0,.12,5,.12]));},
+/* the airport: a runway alongside with its lights, hangars, the tower, airliners at the stands */
+airport(g,r,gi,night){const X=150,lt=[],blue=[],han=[],pl=[];const run=new THREE.Mesh(new THREE.PlaneGeometry(45,AU_BL).rotateX(-Math.PI/2),tdM(0x2a2c30,{roughness:.9,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4}));run.position.set(X,.05,AU_BL/2);g.add(run);
+  const mk=[];for(let z=0;z<AU_BL;z+=50)mk.push([X,.08,z,0,1,1,24]);fxI(g,auFlatG(),auFlatM(0xf2f2ee),mk);
+  for(let z=0;z<AU_BL;z+=30){lt.push([X-23,.3,z,0,.35],[X+23,.3,z,0,.35],[X,.2,z+15,0,.25]);blue.push([X-60,.3,z,0,.3]);}
+  for(let k=0;k<4;k++)han.push([X+110,r()*AU_BL]);
+  for(let k=0;k<5;k++)pl.push([X+70,80+k*150+r()*40]);
+  fxI(g,auBallG(),fxGlow(night>.3?0xfff2c8:0xd8d8d8),lt);fxI(g,auBallG(),fxGlow(0x3a8aff),blue);
+  fxI(g,aug('hangar',()=>new THREE.CylinderGeometry(1,1,1,20,1,false,0,Math.PI).rotateZ(Math.PI/2).rotateY(Math.PI/2)),tdM(0xb8bcc4,{roughness:.5,metalness:.5,side:THREE.DoubleSide}),han.map(a=>[a[0],0,a[1],Math.PI/2,26,22,40]),true);
+  const fus=pl.map(a=>[a[0],4.2,a[1],0,2.1,2.1,22]),wing=pl.map(a=>[a[0],3.4,a[1]+2,0,34,.5,5]),fin=pl.map(a=>[a[0],6,a[1]-19,0,.4,7,4]);
+  fxI(g,aug('fus',()=>new THREE.CylinderGeometry(1,1,2,14).rotateX(Math.PI/2)),tdM(0xf2f2f2,{roughness:.4,metalness:.2}),fus,true);fxI(g,auBoxG(),tdM(0xe8e8ec,{roughness:.4}),wing.concat(fin));
+  if(gi===1){fxI(g,auCylG(),tdM(0xd8d8d4,{roughness:.6}),[[-(60),0,400,0,3.5,38,3.5]],true);fxI(g,auCylG(),tdM(0x2a8a9a,{emissive:0x4ad8e8,emissiveIntensity:.2+.7*night,roughness:.1,metalness:.6}),[[-60,38,400,0,6.5,6,6.5]]);fxI(g,auBallG(),fxGlow(0xff2a1a),[[-60,46,400,0,.8]]);}
+  if(gi===0){const t=new THREE.Mesh(new THREE.BoxGeometry(30,14,220).translate(0,7,0),tdM(0x8ab0c8,{emissive:0xffe8c0,emissiveIntensity:.15+.6*night,roughness:.1,metalness:.6}));t.position.set(-(70),0,300);g.add(t);}},
+/* the fairground: a big wheel turning, a stadium under its floodlights, the exhibition halls lit in colour */
+fair(g,r,gi,night){const hal=[],glow=[];
+  if(gi===0){const w=new THREE.Group(),R=34,rim=tdM(0xe8e8f0,{roughness:.3,metalness:.6});w.add(new THREE.Mesh(new THREE.TorusGeometry(R,.6,8,64),rim));w.add(new THREE.Mesh(new THREE.TorusGeometry(R,.25,6,64),fxGlow(0xff4ad8)));
+    for(let k=0;k<16;k++){const a=k/16*6.283,sp=new THREE.Mesh(new THREE.BoxGeometry(.3,R,.3),rim);sp.position.set(Math.cos(a)*R/2,Math.sin(a)*R/2,0);sp.rotation.z=a-Math.PI/2;w.add(sp);
+      const c=new THREE.Mesh(new THREE.BoxGeometry(2.6,2.4,2.6),fxGlow([0xffd040,0x2fe8ff,0xff4a6a,0x7aff6a][k%4]));c.position.set(Math.cos(a)*R,Math.sin(a)*R,0);w.add(c);}
+    w.position.set(-(70),R+4,380);g.add(w);g.userData.spin=[w];fxI(g,auBoxG(),rim,[[-70,0,374,0,1.2,R+6,1.2],[-70,0,386,0,1.2,R+6,1.2]]);}
+  if(gi===1){const st=new THREE.Mesh(new THREE.CylinderGeometry(80,72,28,40,1,true),tdM(0xc8ccd4,{roughness:.6,side:THREE.DoubleSide}));st.position.set(140,14,400);g.add(st);
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(80,.8,6,64),fxGlow(0x4ad8ff));ring.rotation.x=Math.PI/2;ring.position.set(140,28,400);g.add(ring);
+    [[0,1],[1,0],[0,-1],[-1,0]].forEach(([a,b])=>{fxI(g,auBoxG(),tdM(0x3a3a40,{metalness:.6}),[[140+a*92,0,400+b*92,0,1.5,52,1.5]]);glow.push([140+a*92,52,400+b*92,0,6,3,6,0xfff8e0]);});}
+  for(let k=0;k<5;k++){const s=auS(r),w=50+r()*40;hal.push([s>0?WALL.infinite+30+w/2+r()*60:-(40+w/2+r()*60),r()*AU_BL,w,14+r()*8,40+r()*30,0xe8e8f0,null,0]);}
+  auHouses(g,hal,auWinM('hall',6,2,.6,night));const cols=[0xff2fa0,0x2fe8ff,0xffd040,0x9a5cff,0x4aff8a];
+  hal.forEach((h,i)=>glow.push([h[0],h[3]-1.2,h[1],0,h[2]+.4,.8,h[4]+.4,cols[i%5]]));fxI(g,auBoxG(),fxGlow(0xffffff),glow);},
+/* a sea of dunes: big ones near and far, tufts of grass, and on one stretch an oasis */
+dunes(g,r,gi){const du=[],tuft=[];
+  for(let k=0;k<44;k++){const s=auS(r),w=30+r()*80;du.push([s>0?WALL.infinite+6+w+r()*160:-(32+w+r()*160),-w*.08,r()*AU_BL,0,w,16+r()*30,w*(1.3+r())]);}
+  for(let k=0;k<60;k++){const s=auS(r);tuft.push([auX(r,s,2,90),0,r()*AU_BL,r()*6,.5+r()*.6,.6+r()*.8,.5+r()*.6]);}
+  fxI(g,auBallG(),tdM(0xd88e48,{roughness:1}),du,true);fxI(g,auConeG(),tdM(0x8a8a4a,{roughness:1}),tuft);
+  if(gi===2){const x=70+r()*40,z=400;const p=new THREE.Mesh(new THREE.CircleGeometry(24,24).rotateX(-Math.PI/2),tdM(0x2a6a7a,{roughness:.08,metalness:.3,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4}));p.position.set(x,.08,z);g.add(p);
+    const pal=[];for(let k=0;k<12;k++){const a=k/12*6.28;pal.push([x+Math.cos(a)*(27+r()*6),z+Math.sin(a)*(27+r()*6),.9+r()*.4,r()*6]);}auPalms(g,pal,0x6a5a4a,0x2f7a3e);}},
+/* the red canyon: banded walls either side, hoodoos, boulders, and an arch over both carriageways */
+canyon(g,r,gi){const wall=[],hoo=[],bo=[];const band=[0xa8482a,0xc86a3a,0x8a3a22,0xd8884a,0xb8582e];
+  [-1,1].forEach(s=>{for(let z=0;z<AU_BL;){const w=30+r()*40,h=30+r()*60,x=s>0?WALL.infinite+8+(w+20)/2+r()*50:-(33+(w+20)/2+r()*50);for(let l=0;l<4;l++)wall.push([x+s*l*6,l*h/4,z,r()*.3,w+20-l*8,h/4+.5,w,band[(l+(z|0))%5]]);z+=w*.8;}});
+  for(let k=0;k<20;k++){const s=auS(r),x=auX(r,s,8,40),z=r()*AU_BL,h=6+r()*10;hoo.push([x,0,z,0,1.6,h,1.6,0xb8582e],[x,h,z,r()*6,2.6,2,2.4,0x6a3a28]);}
+  for(let k=0;k<40;k++){const s=auS(r),sc=.6+r()*2.4;bo.push([auX(r,s,3,40),sc*.4,r()*AU_BL,r()*6,sc,sc*.7,sc,0x9a4a2a]);}
+  fxI(g,auBoxG(),tdM(0xffffff,{roughness:1,flatShading:true}),wall.concat(hoo),true);fxI(g,new THREE.DodecahedronGeometry(1,0),tdM(0xffffff,{roughness:1,flatShading:true}),bo);
+  if(gi===0){const a=new THREE.Mesh(new THREE.TorusGeometry(40,7,8,24,Math.PI),tdM(0xb8582e,{roughness:1,flatShading:true}));a.position.set(-10,0,420);g.add(a);}},
+/* the salt pans at night: heaps of harvested salt, brine ponds holding the moon, a power line marching alongside */
+salt(g,r,gi){const heap=[],pond=[],shed=[];
+  for(let b=0;b<4;b++){const s=auS(r),x0=auX(r,s,20,150),z0=r()*(AU_BL-80);for(let i=0;i<3;i++)for(let j=0;j<5;j++)heap.push([x0+s*i*14,0,z0+j*16,r()*6,5+r()*2,4+r()*2,5+r()*2]);}
+  for(let k=0;k<10;k++){const s=auS(r),w=40+r()*60;pond.push([s>0?WALL.infinite+10+w/2+r()*200:-(33+w/2+r()*200),.06,r()*AU_BL,0,w,1,30+r()*50,auPick(r,[0xc8a8b8,0xa8b8c8,0xd8b8c0])]);}
+  for(let k=0;k<3;k++){const s=auS(r);shed.push([auX(r,s,30,120),r()*AU_BL,10,5,7,0x8a7a62,0x5a4a3a,r()*3]);}
+  fxI(g,auConeG(),tdM(0xf4f4f0,{roughness:.7}),heap,true);fxI(g,auFlatG(),tdM(0xffffff,{roughness:.05,metalness:.6,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4}),pond);auHouses(g,shed,auWinM('salt',2,1,.5,1));
+  /* each pylon is one lattice merged into a single mesh, so four of them are one draw */
+  const st=tdM(0x6a6e76,{metalness:.6,roughness:.5}),py=aug('pylon',()=>{const t=new THREE.Group();tdLattice(t,st,34,4,1,0,0);tdBox(t,st,14,.5,.5,0,32,0);return mergeGeos(t.children.map(c=>{c.updateMatrix();return c.geometry.clone().applyMatrix4(c.matrix);}));});
+  fxI(g,py,st,[100,300,500,700].map(z=>[WALL.infinite+40,0,z]),true);
+  fxI(g,auBallG(),fxGlow(0xff2a1a),[100,300,500,700].map(z=>[WALL.infinite+40,35,z,0,.5]));[-6,0,6].forEach(o=>tdBox(g,tdM(0x2a2a2e),.08,.08,AU_BL,WALL.infinite+40+o,31.6,AU_BL/2));},
+/* Neon City: black towers outlined in light, holograms between them */
+neoncity(g,r,gi){const tw=[],edge=[],holo=[];const cols=[0xff2fa0,0x2fe8ff,0x9a5cff,0xffa02f];
+  [-1,1].forEach(s=>{for(let z=0;z<AU_BL;){const w=14+r()*16,h=30+r()*110,d=14+r()*14,x=s>0?WALL.infinite+22+d/2+r()*30:-(40+d/2+r()*30),c=auPick(r,cols);tw.push([x,0,z+w/2,0,d,h,w]);
+    [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>edge.push([x+a*d/2,0,z+w/2+b*w/2,0,.35,h,.35,c]));edge.push([x,h,z+w/2,0,d+.4,.4,w+.4,c]);if(r()<.4)holo.push([x-s*(d/2+.6),h*.5,z+w/2,0,.2,8+r()*8,w*.8,auPick(r,cols)]);z+=w+6+r()*14;}});
+  fxI(g,auBoxG(),tdM(0x07080d,{roughness:.4,metalness:.6}),tw,true);fxI(g,auBoxG(),fxGlow(0xffffff),edge);fxI(g,auBoxG(),tdTex('auholo',()=>new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.35,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide})),holo);},
+/* the palm boulevard: black palms against the sunset, rings of neon on the trunks */
+synthpalms(g,r){const pal=[],ring=[];for(let z=0;z<AU_BL;z+=26)[-1,1].forEach(s=>{const x=s>0?WALL.infinite+5+r()*3:-(33+r()*3),h=1+r()*.5;pal.push([x,z+(r()-.5)*4,h,r()*6]);ring.push([x,2.2*h,z,0,.5,.5,.5,s>0?0xff2fa0:0x2fe8ff],[x,4.4*h,z,0,.42,.42,.42,0xffa02f]);});
+  for(let k=0;k<20;k++){const s=auS(r);pal.push([auX(r,s,30,140),r()*AU_BL,1.4+r()*.6,r()*6]);}
+  auPalms(g,pal,0x0a0410,0x12061e);fxI(g,aug('ring',()=>new THREE.TorusGeometry(1,.18,4,12).rotateX(Math.PI/2)),fxGlow(0xffffff),ring);},
+/* hyperspace: wire shapes adrift, streaks of light rushing past, rings round the road */
+warp(g,r){const cube=[],oct=[],st=[],ring=[];const cols=[0x2fe8ff,0xff2fa0,0x9a5cff,0xffffff];
+  for(let k=0;k<50;k++){const s=auS(r),sc=3+r()*14;(k%2?cube:oct).push([s*(25+r()*220),8+r()*120,r()*AU_BL,r()*6,sc,sc,sc,auPick(r,cols),r()*3,r()*3]);}
+  for(let k=0;k<90;k++){const s=auS(r);st.push([s*(14+r()*160),2+r()*80,r()*AU_BL,0,.25,.25,30+r()*80,auPick(r,cols)]);}
+  for(let z=0;z<AU_BL;z+=100)ring.push([-6,4,z,0,24,24,24,z%200?0x2fe8ff:0x9a5cff]);
+  const wm=tdTex('auwire',()=>new THREE.MeshBasicMaterial({color:0xffffff,wireframe:true}));fxI(g,new THREE.BoxGeometry(1,1,1),wm,cube);fxI(g,new THREE.OctahedronGeometry(1,0),wm,oct);
+  fxI(g,auBoxG(),tdTex('austreak',()=>new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.55,blending:THREE.AdditiveBlending,depthWrite:false})),st);
+  fxI(g,aug('wring',()=>new THREE.TorusGeometry(1,.012,6,64)),fxGlow(0xffffff),ring);}};
+
+/* ---- the horizon of each region: hills, peaks, mesas, a skyline, laid along its 4.8 km ---- */
+const AU_HILLS={
+cones(g,o,r){const L=[],n=o.n||10;for(let i=0;i<n;i++){const s=o.side||(i%2?1:-1),w=(260+r()*200)*(o.w||1);L.push([s*(Math.max(o.x||650,w+60)+r()*600),0,(i+r()*.8)*AU_RL/n,r()*6,w,(140+r()*150)*(o.h||1),w]);}
+  fxI(g,aug('hill7',()=>new THREE.ConeGeometry(1,1,7).translate(0,.5,0)),tdM(o.col,{roughness:1}),L);if(o.lights)AU_HILLS.lights(g,L,o,r);return L;},
+peaks(g,o,r){const L=AU_HILLS.cones(g,Object.assign({},o,{lights:0}),r);fxI(g,aug('hill7',()=>new THREE.ConeGeometry(1,1,7).translate(0,.5,0)),tdM(o.cap||0xf2f6fa,{roughness:.9}),L.map(a=>[a[0],a[5]*.6,a[2],a[3],a[4]*.42,a[5]*.4,a[6]*.42]));},
+rolling(g,o,r){const L=[],n=o.n||16;for(let i=0;i<n;i++){const s=o.side||(i%2?1:-1),w=(160+r()*220)*(o.w||1);L.push([s*(Math.max(o.x||420,w*1.5+60)+r()*700),-w*.08,(i+r())*AU_RL/n,r()*6,w,(40+r()*70)*(o.h||1),w*1.5,o.cols?auPick(r,o.cols):null]);}
+  fxI(g,auBallG(),tdM(o.cols?0xffffff:o.col,{roughness:1}),L);if(o.lights)AU_HILLS.lights(g,L,o,r);return L;},
+mesas(g,o,r){const L=[];for(let i=0;i<(o.n||12);i++){const s=i%2?1:-1,w=60+r()*140;L.push([s*(380+r()*700),0,r()*AU_RL,r()*6,w,(50+r()*110)*(o.h||1),w*(.7+r()*.6)]);}
+  fxI(g,aug('mesa',()=>new THREE.CylinderGeometry(1,1.25,1,8,2).translate(0,.5,0)),tdM(o.col,{roughness:1,flatShading:true}),L);},
+skyline(g,o,r){const L=[];[-1,1].forEach(s=>{for(let z=0;z<AU_RL;z+=30+r()*50){const w=24+r()*40;L.push([s*((o.x||420)+r()*500),0,z,0,w,(50+r()*200)*(o.h||1),w]);}});
+  fxI(g,auBoxG(),auWinM('sky'+(o.win||''),8,16,o.lit||.4,1),L);if(o.edge){const E=[];L.forEach((a,i)=>E.push([a[0],a[5],a[2],0,a[4]+.6,1.2,a[6]+.6,o.edge[i%o.edge.length]]));fxI(g,auBoxG(),fxGlow(0xffffff),E);}},
+wire(g,o,r){for(let i=0;i<(o.n||14);i++){const s=i%2?1:-1,h=60+r()*150,m=new THREE.Mesh(aug('wcone',()=>new THREE.ConeGeometry(1.1,1,4,1).translate(0,.5,0)),tdTex('auw'+o.cols[i%o.cols.length],()=>new THREE.MeshBasicMaterial({color:o.cols[i%o.cols.length],wireframe:true,fog:false})));
+  m.scale.set(h,h,h);m.position.set(s*(260+r()*420),0,r()*AU_RL);g.add(m);}},
+volcano(g,o,r){const s=o.side||-1,x=s*1150,z=AU_RL*.5;fxI(g,aug('volc',()=>new THREE.CylinderGeometry(.16,1,1,24,1,true).translate(0,.5,0)),tdM(o.col,{roughness:1,side:THREE.DoubleSide}),[[x,0,z,0,900,560,900]]);
+  AU_HILLS.cones(g,{col:o.col,side:s,n:6,h:.6,x:800},r);const T=[];for(let k=0;k<140;k++){const a=r()*6.28,d=520+r()*500;T.push([x+Math.cos(a)*d,1+r()*30,z+Math.sin(a)*d*.8,0,1.6]);}
+  fxI(g,auBallG(),fxGlow(0xffc070),T);},
+lights(g,L,o,r){const T=[];L.forEach(a=>{for(let k=0;k<10;k++){const t=r()*6.28,d=r()*a[4]*.85;T.push([a[0]+Math.cos(t)*d,1+r()*8,a[2]+Math.sin(t)*d,0,1.4]);}});fxI(g,auBallG(),fxGlow(o.lights),T);}};
+
+/* ---- the sky of a region: things up there that fade in with it ---- */
+const AU_SKY={
+aurora(S){const au=tdTex('auaur',()=>{const t=canvasTex(256,128,(gg,w,h)=>{const gr=gg.createLinearGradient(0,0,0,h);gr.addColorStop(0,'rgba(120,255,200,0)');gr.addColorStop(.35,'rgba(120,255,200,.55)');gr.addColorStop(.7,'rgba(160,120,255,.35)');gr.addColorStop(1,'rgba(160,120,255,0)');gg.fillStyle=gr;gg.fillRect(0,0,w,h);},1,1);t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping;return t;});
+  const m=new THREE.MeshBasicMaterial({map:au,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false,fog:false,blending:THREE.AdditiveBlending}),a=new THREE.Mesh(new THREE.PlaneGeometry(2600,420),m);a.position.set(-200,520,1500);S.add(a);
+  const b=a.clone();b.material=m;b.position.set(500,460,1900);b.rotation.y=-.5;S.add(b);let t=0;return (w,dt)=>{t+=dt;m.opacity=.6*w*(.8+.2*Math.sin(t*.7));a.visible=b.visible=w>.01;a.position.x=-200+Math.sin(t*.05)*60;};},
+star(S){const c=new THREE.Mesh(new THREE.SphereGeometry(240,40,24),new THREE.MeshBasicMaterial({color:0xfff2c8,transparent:true,opacity:0,fog:false})),h=new THREE.Mesh(new THREE.SphereGeometry(420,32,20),new THREE.MeshBasicMaterial({color:0xffa040,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));
+  c.position.set(180,170,2500);h.position.copy(c.position);S.add(c,h);return w=>{c.material.opacity=w;h.material.opacity=.3*w;c.visible=h.visible=w>.01;};},
+plane(S){const p=new THREE.Group(),wh=tdM(0xf2f2f2,{roughness:.4,metalness:.2});p.add(new THREE.Mesh(new THREE.CylinderGeometry(2.2,2.2,44,14).rotateZ(Math.PI/2),wh));
+  const wg=new THREE.Mesh(new THREE.BoxGeometry(6,.5,40),wh);wg.position.x=2;p.add(wg);const fin=new THREE.Mesh(new THREE.BoxGeometry(4,7,.4),wh);fin.position.set(-20,4.5,0);p.add(fin);
+  [[3,0,20,0xff2020],[3,0,-20,0x20ff40],[-22,8,0,0xffffff]].forEach(([x,y,z,c])=>{const l=new THREE.Mesh(new THREE.SphereGeometry(.7,8,6),new THREE.MeshBasicMaterial({color:c,fog:false}));l.position.set(x,y,z);p.add(l);});
+  p.visible=false;S.add(p);let t=-4;return (w,dt)=>{t+=dt;if(t>16){t=w>.5?0:-6;}const f=t/16;p.visible=w>.5&&f>=0&&f<=1;if(p.visible)p.position.set(700-f*1400,60+f*170,520+f*120);p.rotation.z=.18;};},
+storm(S,o,st){const pts=[];const bolt=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0xe8f0ff,fog:false}));bolt.visible=false;S.add(bolt);let next=3,ft=9;
+  return (w,dt)=>{next-=dt;ft+=dt;if(next<=0&&w>.5){next=4+Math.random()*7;ft=0;pts.length=0;let x=(Math.random()<.5?-1:1)*(200+Math.random()*500),y=420,z=500+Math.random()*700;
+      while(y>-140){pts.push(new THREE.Vector3(x,y,z));x+=(Math.random()-.5)*60;y-=30+Math.random()*40;z+=(Math.random()-.5)*30;}bolt.geometry.dispose();bolt.geometry=new THREE.BufferGeometry().setFromPoints(pts);}
+    const fl=ft<.07?1:ft<.12?0:ft<.2?.6:ft<.26?0:ft<.34?.9:0;bolt.visible=fl>0;hemi.intensity=st.hemi+fl*2.2*w;};}};
+/* ---- the fantasy roads' regions: what each one brings into the road's own world ----
+   Laid into an 800 m block g alongside the road's own block (same z, same three variants).
+   K is the road's context (K.night), r the block's seeded random. */
+const AU_ACC={
+/* Strada del Cielo: islands drifting close by, balloons in among them */
+isles(K,g,r){const I=[],C=[],T=[],B=[],Bk=[];
+  for(let k=0;k<4;k++){const s=auS(r),x=s*(50+r()*150),y=-30+r()*70,z=r()*AU_BL,rr=14+r()*22;I.push([x,y-rr*.9,z,r()*6,rr,rr*1.8,rr,null,Math.PI]);C.push([x,y-1,z,0,rr*1.02,3,rr*1.02]);
+    for(let j=0;j<5;j++){const a=r()*6.28,d=r()*rr*.6,h=5+r()*7;T.push([x+Math.cos(a)*d,y+2,z+Math.sin(a)*d,0,h*.35,h,h*.35]);}}
+  for(let k=0;k<6;k++){const s=auS(r),x=s*(30+r()*160),y=10+r()*60,z=r()*AU_BL,rr=5+r()*3;B.push([x,y,z,0,rr,rr*1.2,rr,auPick(r,[0xff5a3a,0xffc61a,0x3aa8ff,0x5ad86a,0xff7ad0])]);Bk.push([x,y-rr*1.2-3.5,z,0,1.8,1.4,1.8]);}
+  fxI(g,aug('isle',()=>new THREE.ConeGeometry(1,1,9,2)),tdM(0x8a7a6a,{roughness:1,flatShading:true}),I,true);fxI(g,auCylG(),tdM(0x6aa04a,{roughness:1}),C);fxI(g,auConeG(),tdM(0x3a7a3a,{roughness:1}),T);
+  fxI(g,auBallG(),tdM(0xffffff,{roughness:.6}),B);fxI(g,auBoxG(),tdM(0x7a5a3a),Bk);},
+/* the storm: banks of dark cloud at the road's level and towering beyond */
+stormclouds(K,g,r){const P=[];for(let k=0;k<34;k++){const rr=10+r()*22,s=auS(r),x=s*(24+rr*2+r()*190),y=-70+r()*66,z=r()*AU_BL;for(let j=0;j<4;j++)P.push([x+(r()-.5)*rr*1.6,y+(r()-.3)*rr*.5,z+(r()-.5)*rr*1.6,0,rr*(.6+r()*.5),rr*(.4+r()*.3),rr*(.6+r()*.5)]);}
+  for(let k=0;k<6;k++){const s=auS(r),x=s*(260+r()*300),z=r()*AU_BL,rr=50+r()*60;for(let j=0;j<5;j++)P.push([x+(r()-.5)*rr,-100+j*rr*.6,z+(r()-.5)*rr,0,rr*(1-j*.1),rr*.6,rr*(1-j*.1)]);}
+  fxI(g,auBallG(),tdM(0x4a525c,{roughness:1}),P);},
+/* the starry night: paper lanterns rising all round */
+lanterns(K,g,r){const L=[],H=[];for(let k=0;k<80;k++){const s=auS(r),x=s*(12+r()*160),y=3+r()*90,z=r()*AU_BL;L.push([x,y,z,r()*6,1.1,1.7,1.1]);if(k%2===0)H.push([x,y+.85,z,0,3.4]);}
+  fxI(g,auCylG(),fxGlow(0xffb050),L);fxI(g,auBallG(),fxAdd(0xffa040,.22),H);},
+/* Via Lattea: clouds of glowing gas and crystal shards adrift in them */
+nebula(K,g,r){[[0xff3a9a,.07],[0x9a3aff,.08],[0x2fe8ff,.06]].forEach(([c,o])=>{const L=[];for(let k=0;k<6;k++){const s=auS(r),rr=30+r()*70;L.push([s*(50+r()*280),-80+r()*200,r()*AU_BL,0,rr,rr*.7,rr]);}fxI(g,auBallG(),fxAdd(c,o),L);});
+  const X=[];for(let k=0;k<40;k++){const s=auS(r),sc=1+r()*4;X.push([s*(20+r()*200),-40+r()*120,r()*AU_BL,r()*6,sc*.6,sc*1.6,sc*.6,null,r()*3,r()*3]);}fxI(g,new THREE.OctahedronGeometry(1,0),fxGlow(0xff7ad8),X);},
+/* the rings: a band of ice and rock right across the road's level */
+icering(K,g,r){const L=[];for(let k=0;k<260;k++){const s=auS(r),sc=.5+Math.pow(r(),2.5)*14,x=s*(16+sc*1.3+r()*230);L.push([x,x*.12+(r()-.5)*24,r()*AU_BL,r()*6,sc,sc*(.6+r()*.5),sc*(.7+r()*.5),auPick(r,[0xdcecff,0xc8d8e8,0xb8a890,0xf2f6ff]),r()*3,r()*3]);}
+  fxI(g,new THREE.DodecahedronGeometry(1,0),tdM(0xffffff,{roughness:.35,metalness:.1,flatShading:true}),L,true);},
+/* near the star: station modules with their panels spread to it */
+starport(K,g,r){const M=[],P=[],T=[],Lt=[];for(let k=0;k<3;k++){const s=auS(r),x=s*(60+r()*90),y=10+r()*50,z=100+r()*600;M.push([x,y,z,0,6,6,40]);T.push([x,y,z,0,60,.8,.8]);
+    [-1,1].forEach(q=>P.push([x+q*30,y,z,0,24,.3,12]));Lt.push([x,y+6.4,z+18,0,.8],[x,y+6.4,z-18,0,.8]);}
+  fxI(g,aug('mod',()=>new THREE.CylinderGeometry(1,1,1,16).rotateX(Math.PI/2)),tdM(0xd8dce4,{metalness:.6,roughness:.35}),M);fxI(g,new THREE.BoxGeometry(1,1,1),tdM(0x1a2a5a,{metalness:.7,roughness:.25,emissive:0x2a4aa0,emissiveIntensity:.25}),P);
+  fxI(g,new THREE.BoxGeometry(1,1,1),tdM(0x8a9ab0,{metalness:.8,roughness:.3}),T);fxI(g,auBallG(),fxGlow(0xff3a2a),Lt);},
+/* Tunnel dell'Abisso: the trench, its walls going up into the dark, things glowing on the floor */
+trench(K,g,r){const W=[],A=[],J=[];[-1,1].forEach(s=>{for(let z=0;z<AU_BL;){const w=20+r()*40;W.push([s*(36+r()*20),0,z,r()*.3,10+r()*20,40+r()*80,w]);z+=w*.8;}});
+  for(let k=0;k<70;k++){const s=auS(r);A.push([s*(15+r()*30),.3,r()*AU_BL,0,.3+r()*.5,.3+r()*.5,.3+r()*.5,auPick(r,[0x2fe8ff,0xff4ad8,0x7aff9a])]);}
+  for(let k=0;k<18;k++){const s=auS(r);J.push([s*(16+r()*60),6+r()*30,r()*AU_BL,0,1.4+r()*2]);}
+  fxI(g,auBoxG(),tdM(0x0a1a22,{roughness:1,flatShading:true}),W);fxI(g,auBallG(),fxGlow(0xffffff),A);
+  fxI(g,aug('jelly',()=>new THREE.SphereGeometry(1,12,8,0,6.29,0,Math.PI/2)),fxAdd(0xff7ad8,.3),J);fxI(g,auBallG(),fxGlow(0xffb0f0),J.map(a=>[a[0],a[1]+.3,a[2],0,a[4]*.3]));},
+/* the drowned city: arches, broken and fallen columns, heads of statues in the sand */
+ruins(K,g,r){const st=tdM(0xb8b4a0,{roughness:.9}),A=[],C=[],F=[],H=[];
+  for(let k=0;k<6;k++){const s=auS(r);A.push([s*(22+r()*70),0,r()*AU_BL,r()*3,1,1,1]);}
+  for(let k=0;k<50;k++){const s=auS(r),h=3+r()*12;C.push([s*(18+r()*70),0,r()*AU_BL,0,1.2,h,1.2]);}
+  for(let k=0;k<12;k++){const s=auS(r);F.push([s*(26+r()*64),1,r()*AU_BL,r()*6,1.2,10+r()*6,1.2,null,0,Math.PI/2]);}
+  for(let k=0;k<5;k++){const s=auS(r);H.push([s*(25+r()*50),2,r()*AU_BL,r()*6,4,5,4.2]);}
+  fxI(g,aug('arch',()=>new THREE.TorusGeometry(8,1.3,6,16,Math.PI)),st,A,true);fxI(g,auCylG(),st,C,true);fxI(g,aug('col',()=>new THREE.CylinderGeometry(1,1,1,12)),st,F);fxI(g,auBallG(),st,H);},
+/* the lagoon: big coral heads in the light, sea grass, brighter shafts from the surface */
+lagoon(K,g,r){const C=[],G=[],S=[];for(let k=0;k<60;k++){const s=auS(r),rr=1.5+r()*4;C.push([s*(15+rr+r()*70),0,r()*AU_BL,r()*6,rr,rr*(.6+r()*.5),rr,auPick(r,[0xff7a8a,0xffb05a,0xd88aff,0xffe070,0x5ae8d0])]);}
+  for(let k=0;k<220;k++){const s=auS(r);G.push([s*(14+r()*90),0,r()*AU_BL,r()*6,.25,1.5+r()*2.5,.25,auPick(r,[0x4a8a3a,0x6aa04a,0x3a7a4a])]);}
+  for(let k=0;k<24;k++){const s=auS(r);S.push([s*(20+r()*120),40,r()*AU_BL,r()*3,6+r()*8,90,1,null,0,(r()-.5)*.3]);}
+  fxI(g,auBallG(),tdM(0xffffff,{roughness:.8}),C);fxI(g,auConeG(),tdM(0xffffff,{roughness:.9}),G);fxI(g,new THREE.PlaneGeometry(1,1),fxAdd(0xe0ffff,.09),S);},
+/* Ponte dell'Inferno: the ash fields, charred trees and drifts of cinder */
+ash(K,g,r){const T=[],B=[],M=[];for(let k=0;k<30;k++){const s=auS(r),x=s*(18+r()*120),z=r()*AU_BL,h=6+r()*9,tilt=(r()-.5)*.3;T.push([x,-2.8,z,0,.35,h,.35,null,tilt,tilt]);
+    for(let j=0;j<2;j++)B.push([x,-2.8+h*(.55+j*.2),z,r()*6,3+r()*2,.25,.25,null,0,(r()-.5)*.8]);}
+  for(let k=0;k<30;k++){const s=auS(r),w=6+r()*20;M.push([s*(14+w*1.4+r()*140),-2.8,r()*AU_BL,0,w,2+r()*5,w*1.4]);}
+  fxI(g,auCylG(),tdM(0x16120f,{roughness:1}),T,true);fxI(g,auBoxG(),tdM(0x16120f,{roughness:1}),B);fxI(g,auBallG(),tdM(0x4a4642,{roughness:1}),M);},
+/* the crystal field: clusters of violet crystal glowing out of the rock */
+crystals(K,g,r){const X=[],H=[];for(let c=0;c<18;c++){const s=auS(r),cx=s*(18+r()*140),cz=r()*AU_BL;for(let k=0;k<5;k++){const h=4+r()*12;X.push([cx+(r()-.5)*8,-2.8+h*.4,cz+(r()-.5)*8,r()*6,1+r()*2,h,1+r()*2,null,(r()-.5)*.5,(r()-.5)*.5]);}H.push([cx,2,cz,0,9]);}
+  fxI(g,new THREE.OctahedronGeometry(1,0),tdM(0x6a2a9a,{emissive:0xb04aff,emissiveIntensity:.85,roughness:.2,metalness:.3,flatShading:true}),X,true);fxI(g,auBallG(),fxAdd(0xb04aff,.1),H);},
+/* the fountains of fire: lava thrown up out of the sea, pools glowing round them */
+geysers(K,g,r){const J=[],H=[],P=[];for(let k=0;k<12;k++){const s=auS(r),x=s*(30+r()*150),z=r()*AU_BL,h=10+r()*28;J.push([x,-2.8,z,0,1.2+r(),h,1.2+r()]);H.push([x,-2.8+h,z,0,4+r()*3]);P.push([x,-2.7,z,0,9+r()*6,1,9+r()*6]);}
+  fxI(g,aug('jet',()=>new THREE.CylinderGeometry(.35,1,1,10).translate(0,.5,0)),fxGlow(0xffa030),J);fxI(g,auBallG(),fxAdd(0xff6a10,.3),H);fxI(g,auFlatG(),fxGlow(0xff5010),P);},
+/* Specchio della Luna (all mirrored in the flat): arches of salt at dawn */
+saltarch(K,g,r){const up=fxMirrorUp(g),A=[],P=[];for(let k=0;k<5;k++){const s=auS(r),sc=10+r()*8;A.push([s*(30+r()*130),0,r()*AU_BL,r()*6,sc,sc,sc*1.4]);}
+  for(let k=0;k<24;k++){const s=auS(r),h=3+r()*9;P.push([s*(16+r()*150),0,r()*AU_BL,0,.8+r(),h,.8+r()]);}
+  fxI(up,aug('sarch',()=>new THREE.TorusGeometry(1,.18,8,20,Math.PI)),tdM(0xf4f0f8,{roughness:.6}),A,true);fxI(up,auCylG(),tdM(0xf4f0f8,{roughness:.6}),P,true);fxMirrorDown(g,up);},
+/* crystal night: black obelisks with light running up their edges */
+obelisks(K,g,r){const up=fxMirrorUp(g),O=[],E=[],T=[];for(let k=0;k<12;k++){const s=auS(r),x=s*(20+r()*140),z=r()*AU_BL,h=20+r()*24;O.push([x,0,z,0,1.8,h,1.8]);
+    [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>E.push([x+a*.92,0,z+b*.92,0,.12,h,.12]));T.push([x,h,z,0,1.3,2.4,1.3]);}
+  fxI(up,auBoxG(),tdM(0x1a1428,{roughness:.3,metalness:.6}),O,true);fxI(up,auBoxG(),fxGlow(0x8af0ff),E);fxI(up,auConeG(),fxGlow(0xc8f8ff),T);fxMirrorDown(g,up);},
+/* under the aurora: spires of ice catching its green */
+icespires(K,g,r){const up=fxMirrorUp(g),S=[];for(let k=0;k<34;k++){const s=auS(r),h=10+r()*30;S.push([s*(16+r()*160),0,r()*AU_BL,r()*6,1.5+r()*3,h,1.5+r()*3]);}
+  fxI(up,auConeG(),tdM(0xbfefff,{emissive:0x3affd0,emissiveIntensity:.35,roughness:.1,metalness:.2}),S,true);fxMirrorDown(g,up);},
+/* Bosco Luminoso: the swamp, black pools under glowing lily pads, reeds, wisps */
+swamp(K,g,r){const P=[],L=[],R=[],H=[],W=[];for(let k=0;k<10;k++){const s=auS(r),rr=8+r()*20,x=s*(14+rr*1.15+r()*100),z=r()*AU_BL;P.push([x,.05,z,0,rr,1,rr]);
+    for(let j=0;j<10;j++){const a=r()*6.28,d=r()*rr*.8;L.push([x+Math.cos(a)*d,.09,z+Math.sin(a)*d,0,.8+r()*.8,1,.8+r()*.8]);}
+    for(let j=0;j<8;j++){const a=r()*6.28,d=rr*(.9+r()*.2),h=1.5+r()*1.5;R.push([x+Math.cos(a)*d,0,z+Math.sin(a)*d,0,.06,h,.06]);H.push([x+Math.cos(a)*d,h,z+Math.sin(a)*d,0,.14,.5,.14]);}}
+  for(let k=0;k<30;k++){const s=auS(r);W.push([s*(14+r()*100),1+r()*8,r()*AU_BL,0,.35]);}
+  fxI(g,aug('pool',()=>new THREE.CircleGeometry(1,20).rotateX(-Math.PI/2)),tdM(0x061410,{roughness:.05,metalness:.7,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4}),P);
+  fxI(g,aug('pad',()=>new THREE.CircleGeometry(1,10).rotateX(-Math.PI/2)),fxGlow(0x6aff8a),L);fxI(g,auCylG(),tdM(0x3a4a2a,{roughness:1}),R);fxI(g,auCylG(),tdM(0x5a3a22,{roughness:1}),H);fxI(g,auBallG(),fxGlow(0x9affd0),W);},
+/* the cavern: arches of rock over the road, stalagmites, crystals glowing in the dark */
+cave(K,g,r){const A=[],S=[],X=[];for(let z=60;z<AU_BL;z+=150+r()*60)A.push([-6,0,z,0,1,1,1+r()*.6]);
+  for(let k=0;k<70;k++){const s=auS(r),h=3+r()*12;S.push([s*(14+r()*90),0,r()*AU_BL,r()*6,.8+r()*1.8,h,.8+r()*1.8]);}
+  for(let k=0;k<40;k++){const s=auS(r),sc=.5+r()*1.5;X.push([s*(13+r()*60),sc,r()*AU_BL,r()*6,sc*.6,sc*1.8,sc*.6,null,(r()-.5)*.6,(r()-.5)*.6]);}
+  fxI(g,aug('cavearch',()=>new THREE.TorusGeometry(30,6,8,20,Math.PI)),tdM(0x2a2030,{roughness:1,flatShading:true}),A);fxI(g,auConeG(),tdM(0x3a2a3a,{roughness:1}),S);fxI(g,new THREE.OctahedronGeometry(1,0),fxGlow(0xb07aff),X);},
+/* dawn in the wood: ordinary trees again, ferns, the low sun coming through in shafts */
+dawnwood(K,g,r){const T=[],F=[],B=[];for(let k=0;k<50;k++){const s=auS(r);T.push([s*(16+r()*110),r()*AU_BL,3+r()*3,14+r()*10,4+r()*3,1,r()*6]);}
+  for(let k=0;k<90;k++){const s=auS(r);F.push([s*(13+r()*60),0,r()*AU_BL,r()*6,1+r()*.8,.8+r()*.6,1+r()*.8]);}
+  for(let k=0;k<20;k++){const s=auS(r);B.push([s*(40+r()*100),46,r()*AU_BL,.6,5+r()*6,80,1,null,0,-.5*s]);}
+  auTrees(g,T,0x4a3a2a,0x3a6a2a);fxI(g,auConeG(),tdM(0x3a7a32,{roughness:1}),F);fxI(g,new THREE.PlaneGeometry(1,1),fxAdd(0xffe0a0,.08),B);}};
+/* =====================================================================
+   AUTOSTRADA REGIONS. No Autostrada is one landscape any more: each runs
+   through four regions in turn, 4.8 km apiece (six of its 800 m blocks),
+   and each changes what you can see - what stands beside the road, the
+   ground, the hills or the sea on the horizon, the weather, the time of
+   day and the light. The sky turns from one region to the next over the
+   last few hundred metres, the ground changes along a ragged line across
+   the road, and a banner names each region as you enter it. The first
+   region is the road as it always was; after the fourth it comes round
+   again. The fantasy roads keep their own worlds and bring new things
+   into them, under a new light.
+   ===================================================================== */
+const AU_RN=6,AU_RL=AU_RN*AU_BL,auMod=(a,n)=>((a%n)+n)%n;
+const AU_LK=(base,o)=>Object.assign({base},o||{});
+const AU_REGIONS={
+ sole:[
+  {n:'Appennino',look:'forest',scene:'forest',add:['firs'],ground:'grass',hills:{k:'cones',col:0x1b1630},wx:'motes'},
+  {n:"Val d'Orcia",look:AU_LK('tuscany',{sky:[0x3468b8,0xd8a870,0xffd498],fog:[0xe6c89c,360,2000],sun:[0xffd8a0,2.7],hemi:[0xc8c0e0,0x6a5030,1],exposure:.98,cloud:{cov:.42,col:0xffe8d0,sun:0xffd090,dir:[.72,.2,.66],pow:900,star:0}}),
+   scene:'vines',furn:'forest',ground:'meadow',hills:{k:'rolling',cols:[0xa8a060,0x8a9a50,0xb8a868]},towns:['SIENA','MONTALCINO','PIENZA','AREZZO'],night:0},
+  {n:'Pianura Padana',look:AU_LK('autumn',{sky:[0x8f9cae,0xb9c1c9,0xd6dade],fog:[0xc9ced2,60,700],sun:[0xfff2e0,1.3],hemi:[0xc8ced6,0x5a5a48,1.15],exposure:1,cloud:{cov:.95,col:0xd0d4d8,sun:0xfff4e8,dir:[.5,.35,.79],pow:600,star:0}}),
+   scene:'plain',furn:'forest',ground:'leaves',towns:['PIACENZA','PARMA','MODENA','BOLOGNA'],night:.1},
+  {n:'Vesuvio',look:AU_LK('forest',{sky:[0x03050e,0x0e1430,0x3a2440],fog:[0x101222,200,1300],sun:[0x8a9cff,.6],hemi:[0x34406a,0x120e0c,.95],exposure:1.18,cloud:{cov:.35,col:0x1a1a30,sun:0x8a9cff,dir:[-.4,.5,.77],pow:3000,star:1.1}}),
+   scene:'town',furn:'forest',ground:'grass',hills:{k:'volcano',col:0x221c26,side:-1},towns:['CASERTA','NAPOLI','POMPEI','SALERNO'],night:1}],
+ riviera:[
+  {n:'Scogliere',look:'coast',scene:'coast',ground:'sand',water:{x:75,col:0x1a5a8a},hills:{k:'cones',col:0x6a5a6a,side:-1},tunnel:true,wx:'motes'},
+  {n:'Cinque Terre',look:'riviera',scene:'villages',furn:'coast',ground:'grass',water:{x:75,col:0x1a6a90,sand:8},hills:{k:'rolling',side:-1,col:0x4a6a3a,h:2.2,x:300},tunnel:true,towns:['LEVANTO','VERNAZZA','MANAROLA','LERICI'],night:.3},
+  {n:'Porto di Genova',look:'harbor',scene:'port',furn:'city',ground:'pavement',water:{x:120,col:0x1a3a50},hills:{k:'cones',side:-1,col:0x3a3a4a},towns:['GENOVA','PORTO','VOLTRI','SAVONA'],night:.6},
+  {n:'Costa Azzurra',look:AU_LK('coast',{sky:[0x0a1438,0x24347a,0x8a5a9a],fog:[0x2a2e50,260,1800],sun:[0x9ab0ff,.9],hemi:[0x5a6aa8,0x2a2420,1],exposure:1.12,cloud:{cov:.3,col:0x3a3a6a,sun:0xb0a0ff,dir:[.6,.18,.78],pow:2000,star:.7}}),
+   scene:'villas',furn:'coast',ground:'grass',water:{x:75,col:0x0e2444,sand:30},hills:{k:'cones',side:-1,col:0x1e2036,lights:0xffd08a},towns:['MENTONE','MONACO','NIZZA','CANNES'],night:.9}],
+ brennero:[
+  {n:'Passo del Brennero',look:'alpine',scene:'alpine',ground:'snow',hills:{k:'peaks',col:0x8a9ab8,h:2.2,w:1.4},tunnel:true,wx:'snow',sky:'aurora'},
+  {n:"Val d'Isarco",look:AU_LK('alpine',{sky:[0x34548e,0xd89aa0,0xffcf9e],fog:[0xd8b6b0,240,1600],sun:[0xffc8a0,2.1],hemi:[0x9aaed8,0x4a5a3a,1],exposure:1,cloud:{cov:.4,col:0xe8b0b0,sun:0xffb080,dir:[.86,.12,.5],pow:900,star:0}}),
+   scene:'orchard',furn:'forest',ground:'meadow',hills:{k:'peaks',col:0x6a7a8a,h:2,w:1.2},towns:['BRESSANONE','CHIUSA','BOLZANO','MERANO'],night:0},
+  {n:'Lago di Garda',look:AU_LK('chalet',{fog:[0xc8d8ea,420,2600],sun:[0xfff4e4,2.4],hemi:[0xc8dcff,0x4a6a3a,.9],exposure:.92}),
+   scene:'lake',furn:'forest',ground:'grass',water:{x:36,col:0x154456,sand:8},hills:{k:'peaks',col:0x5a6a5a,cap:0xd8e0e8,h:2.4,w:1.1,x:700},towns:['RIVA','ARCO','TORBOLE','MALCESINE'],night:0},
+  {n:'Ghiacciaio',look:AU_LK('alpine',{sky:[0x8494a8,0xbcc8d4,0xe6ecf2],fog:[0xdfe6ee,70,650],sun:[0xeef4ff,1.3],hemi:[0xdce8f4,0xb8c4d2,1.35],exposure:.95,cloud:{cov:1.05,col:0xd8dee6,sun:0xffffff,dir:[.4,.6,.69],pow:2000,star:0}}),
+   scene:'glacier',furn:'alpine',ground:'snow',hills:{k:'peaks',col:0xdfe6ee,cap:0xffffff,h:2.6,w:1.3},tunnel:true,towns:['VIPITENO','STELVIO','RESIA','BRENNERO'],wx:'snow',night:0}],
+ tang:[
+  {n:'Centro',look:'city',scene:'city',ground:'pavement',hills:{k:'skyline',lit:.45,h:1.2}},
+  {n:'Zona industriale',look:AU_LK('city',{sky:[0x070403,0x24140a,0x6a3a12],fog:[0x3a220e,110,850],sun:[0xffa050,.8],hemi:[0x6a4a2a,0x1a1008,1.25],exposure:1.12,cloud:{cov:.75,col:0x3a2414,sun:0xff9040,dir:[.38,.52,.76],pow:3200,star:.05}}),
+   scene:'industry',furn:'city',ground:'pavement',hills:{k:'skyline',lit:.15,h:.6,win:'i'},towns:['MARGHERA','DOGANA','INTERPORTO','RAFFINERIA']},
+  {n:'Aeroporto',look:AU_LK('city',{sky:[0x01030b,0x081634,0x183a66],fog:[0x0a1426,220,1500],sun:[0x9ab4ff,.9],hemi:[0x3a4a7a,0x0c1018,1.15],exposure:1.12,cloud:{cov:.25,col:0x101a30,sun:0x8aa0ff,dir:[.38,.52,.76],pow:3200,star:1.2}}),
+   scene:'airport',furn:'city',ground:'grass',towns:['MALPENSA','LINATE','TERMINAL 1','CARGO'],sky:'plane'},
+  {n:'Fiera',look:AU_LK('city',{sky:[0x08030f,0x260a36,0x5a1a58],fog:[0x1c0a26,150,1100],sun:[0xff80d0,.8],hemi:[0x6a3a8a,0x140a18,1.3],exposure:1.15,cloud:{cov:.5,col:0x2a1030,sun:0xff70c0,dir:[.38,.52,.76],pow:3200,star:.3}}),
+   scene:'fair',furn:'city',ground:'pavement',hills:{k:'skyline',lit:.5,edge:[0xff2fa0,0x9a5cff,0x2fe8ff],win:'f'},towns:['FIERA','STADIO','LUNA PARK','EXPO']}],
+ deserto:[
+  {n:'Altopiano',look:'desert',scene:'desert',ground:'salt',hills:{k:'cones',col:0x9a6a4a},wx:'dust'},
+  {n:'Mare di dune',look:AU_LK('desert',{sky:[0x3a6cc0,0xb8a888,0xf0c890],fog:[0xe0b47a,520,2700],sun:[0xffe2b0,3.3],hemi:[0xa8b4d0,0x8a5a32,.7],exposure:.86,cloud:{cov:.1,col:0xf4e8d0,sun:0xfff0d0,dir:[.75,.26,.6],pow:1200,star:0}}),
+   scene:'dunes',furn:'desert',ground:'sand',hills:{k:'rolling',col:0xd8b47a,h:1.6,w:1.4},towns:['ERG','KSAR','DUNE','OASI'],wx:'dust'},
+  {n:'Canyon rosso',look:'canyon',scene:'canyon',furn:'canyon',ground:'redsand',hills:{k:'mesas',col:0x9a4a2a,h:1.2},towns:['GOLA','ARCO','ROCCIA','PIETRA']},
+  {n:'Saline',look:AU_LK('desert',{sky:[0x02030a,0x0a1430,0x2a3458],fog:[0x101830,600,2600],sun:[0xb8c8ff,1],hemi:[0x4a5a8a,0x3a3a44,1.05],exposure:1.12,cloud:{cov:.15,col:0x101828,sun:0xb8c8ff,dir:[-.5,.4,.77],pow:4000,star:1.5}}),
+   scene:'salt',furn:'desert',ground:'salt',hills:{k:'cones',col:0x2a3040,h:.7,x:900},towns:['SALINE','LUNA','SALE','MIRAGGIO'],night:1}],
+ neon:[
+  {n:'La Griglia',look:'synth',scene:'synth',ground:'grid',hills:{k:'wire',cols:[0xff2fa0,0x9a5cff]}},
+  {n:'Neon City',look:AU_LK('synth',{sky:[0x00040c,0x00243e,0x00b8e8],fog:[0x021624,200,1400],sun:[0x7af0ff,1.4],hemi:[0x2a6aaa,0x0a1a2a,1.2],cloud:{sun:0x2fe8ff}}),
+   scene:'neoncity',furn:'synth',ground:'grid',hills:{k:'skyline',lit:.3,edge:[0x2fe8ff,0xff2fa0],win:'n',h:1.4},towns:['SECTOR 7','DOWNTOWN','NEXUS','GRIDLINE']},
+  {n:'Viale delle palme',look:AU_LK('synth',{sky:[0x14031f,0x7a1650,0xff9a3a],fog:[0x401236,260,1600],sun:[0xffa0c0,1.7],hemi:[0x9a3a8a,0x2a0a1a,1.15],cloud:{sun:0xffa040}}),
+   scene:'synthpalms',furn:'synth',ground:'grid',hills:{k:'wire',cols:[0xffa02f,0xff2fa0]},towns:['SUNSET','OCEAN DRIVE','MIAMI','VICE']},
+  {n:'Iperspazio',look:AU_LK('synth',{sky:[0x000000,0x08021a,0x2a0a5a],fog:[0x05010e,320,2200],sun:[0xb08aff,1.2],hemi:[0x4a2a9a,0x0a0418,1.1],cloud:{star:1.5,sun:0x9a5cff}}),
+   scene:'warp',furn:'synth',ground:'grid',towns:['ARCADIA','WARP','VOID','PIXEL']}],
+ cielo:[
+  {n:'Alba sulle nuvole',look:'skyroad'},
+  {n:'Arcipelago',look:AU_LK('skyroad',{sky:[0x1a56c0,0x5a98e8,0xcfe4f8],fog:[0xdfeaf6,900,3600],sun:[0xffffff,2.6],hemi:[0xc8dcff,0xe8eef4,1],exposure:.88,cloud:{cov:.3,col:0xffffff,sun:0xfff8f0,dir:[.3,.8,.52],pow:1600,star:0}}),acc:'isles'},
+  {n:'Temporale',look:AU_LK('skyroad',{sky:[0x1a1e26,0x3a4250,0x6a7480],fog:[0x4a5260,300,1600],sun:[0xc8d0e0,.8],hemi:[0x6a7484,0x3a4048,1],exposure:1.05,cloud:{cov:1.1,col:0x3a4048,sun:0x8a94a4,dir:[.3,.5,.81],pow:1500,star:0}}),acc:'stormclouds',sky:'storm'},
+  {n:'Notte stellata',look:AU_LK('skyroad',{sky:[0x020410,0x0a1838,0x2a3a6a],fog:[0x101a34,700,3200],sun:[0x9ab0ff,.8],hemi:[0x3a4a7a,0x1a2030,.9],exposure:1.12,cloud:{cov:.25,col:0x1a2a4a,sun:0x9ab0ff,dir:[-.5,.4,.77],pow:3000,star:1.5}}),acc:'lanterns',sky:'aurora'}],
+ orbita:[
+  {n:'Via Lattea',look:'orbit'},
+  {n:'Nebulosa',look:AU_LK('orbit',{sky:[0x05010a,0x1a0626,0x4a1250],fog:[0x2a0a36,500,3000],sun:[0xff9ad8,2],hemi:[0x8a3aa0,0x1a0a20,.8],exposure:1.08,cloud:{star:1.2}}),acc:'nebula'},
+  {n:'Anelli di ghiaccio',look:AU_LK('orbit',{sky:[0x000208,0x041028,0x0a2a4a],fog:[0x061a30,800,4000],sun:[0xe0f0ff,3],hemi:[0x8ab0d8,0x1a2a3a,.75]}),acc:'icering'},
+  {n:'Stella gigante',look:AU_LK('orbit',{sky:[0x080202,0x2a0a04,0x8a3a10],fog:[0x3a1406,900,4200],sun:[0xffc070,3.2],hemi:[0xffa060,0x3a1a10,.9],exposure:1.05}),acc:'starport',sky:'star'}],
+ abisso:[
+  {n:'Barriera corallina',look:'abyss'},
+  {n:'Fossa',look:AU_LK('abyss',{sky:[0x000206,0x000e1c,0x002234],fog:[0x01121c,14,150],sun:[0x5ab8ff,.7],hemi:[0x1a5a80,0x020a10,.9],exposure:1.2}),acc:'trench'},
+  {n:'Città sommersa',look:AU_LK('abyss',{sky:[0x001410,0x003a30,0x1a6a58],fog:[0x0a4a40,22,220],sun:[0xa8ffd8,1.1],hemi:[0x3aa088,0x0a2018,1.2]}),acc:'ruins'},
+  {n:'Laguna',look:AU_LK('abyss',{sky:[0x0a5a8a,0x1aa0c0,0x6ae0e8],fog:[0x2aa8c0,40,420],sun:[0xe0ffff,2.2],hemi:[0x8ae8ff,0x5a8a70,1.4],exposure:1}),acc:'lagoon'}],
+ inferno:[
+  {n:'Mare di lava',look:'inferno'},
+  {n:'Ceneri',look:AU_LK('inferno',{sky:[0x0c0a0a,0x2a2624,0x5a524a],fog:[0x3a3632,120,1000],sun:[0xffc8a0,1],hemi:[0x5a5450,0x2a1a10,.9],exposure:1.1,cloud:{cov:1,col:0x2a2624,sun:0xff9a6a,dir:[.25,.2,.95],pow:600,star:0}}),acc:'ash',tint:{col:0x5a4a44,em:.3},wx:'dust'},
+  {n:'Cristalli',look:AU_LK('inferno',{sky:[0x06020e,0x2a0a3a,0x8a2a9a],fog:[0x2a0a36,180,1400],sun:[0xd08aff,1.4],hemi:[0x7a3aa0,0x3a0a40,.95]}),acc:'crystals',tint:{col:0xb070ff,em:.8}},
+  {n:'Fontane di fuoco',look:AU_LK('inferno',{sky:[0x1a0402,0x7a1a06,0xffa030],fog:[0x8a2a08,160,1300],sun:[0xffc060,2],hemi:[0xff8040,0xff4010,1],exposure:1.12}),acc:'geysers',tint:{col:0xffffff,em:1.6},wx:'embers'}],
+ specchio:[
+  {n:'Specchio della Luna',look:'mirror'},
+  {n:"Alba d'oro",look:AU_LK('mirror',{sky:[0x2a3a8a,0xe09a6a,0xffd88a],fog:[0xf0c898,700,3200],sun:[0xffe0a0,2.2],hemi:[0xffd8b0,0xfff0d8,1.1],exposure:.95,cloud:{cov:.3,col:0xffc0a0,sun:0xffd080,dir:[.8,.15,.58],pow:900,star:0}}),acc:'saltarch'},
+  {n:'Notte di cristallo',look:AU_LK('mirror',{sky:[0x02030c,0x0a1640,0x2a3a7a],fog:[0x141c40,500,2800],sun:[0x9ab8ff,1],hemi:[0x4a5aa0,0x8a9ad8,1],exposure:1.1,cloud:{cov:.15,col:0x101a30,sun:0x9ab8ff,dir:[-.35,.14,.93],pow:800,star:1.6}}),acc:'obelisks'},
+  {n:'Aurora',look:AU_LK('mirror',{sky:[0x010a10,0x06303a,0x1a8a7a],fog:[0x0a3a3a,500,2800],sun:[0x8affd8,1.1],hemi:[0x3aa090,0x6ad8c0,1],exposure:1.12,cloud:{star:1.2,sun:0x8affd8}}),acc:'icespires',sky:'aurora'}],
+ fungaia:[
+  {n:'Bosco Luminoso',look:'mycelium'},
+  {n:'Palude',look:AU_LK('mycelium',{sky:[0x020a04,0x0a2a10,0x1a4a20],fog:[0x0e3014,50,480],sun:[0x8aff9a,.6],hemi:[0x2a7a3a,0x0a1a0a,1.1],exposure:1.2}),acc:'swamp'},
+  {n:'Caverna',look:AU_LK('mycelium',{sky:[0x030208,0x120a24,0x2a1448],fog:[0x160c2a,40,420],sun:[0xb08aff,.5],hemi:[0x4a2a8a,0x0a0614,1.05],exposure:1.22}),acc:'cave'},
+  {n:'Alba nel bosco',look:AU_LK('mycelium',{sky:[0x3a5aa0,0xd8a0a0,0xffd8a8],fog:[0xc8b0a8,90,800],sun:[0xffd0a0,1.8],hemi:[0xb8c0e0,0x4a5a3a,1],exposure:1,cloud:{cov:.4,col:0xe8b8b0,sun:0xffc080,dir:[.8,.15,.58],pow:900,star:0}}),acc:'dawnwood'}]};
+/* a region's look: a theme, or a theme with some of it changed */
+function auRegs(key){const L=AU_REGIONS[key];if(!L)return null;
+  L.forEach(r=>{if(r.lk)return;const o=typeof r.look==='string'?{base:r.look}:r.look,B=THEMES[o.base]||THEMES.forest;r.lk=Object.assign({},B,o);r.lk.cloud=Object.assign({},B.cloud,o.cloud||{});if(r.night==null)r.night=TD_NIGHT[o.base]||0;});return L;}
+const auKey=R=>Object.keys(AUTOS).find(k=>AUTOS[k]===R);
+/* the light part way from one look to the next: what applyTheme sets, blended */
+const AUC=[0,1,2,3,4,5,6,7,8,9].map(()=>new THREE.Color()),AUV=[new THREE.Vector3(),new THREE.Vector3()];
+const auMix=(i,a,b,t)=>AUC[i].set(a).lerp(AUC[9].set(b),t);
+function auSetLook(A,B,t,st){const u=sky.material.uniforms,l=(a,b)=>a+(b-a)*t,cf=camera.far*.92,a=A.cloud,b=B.cloud;
+  u.top.value.copy(auMix(0,A.sky[0],B.sky[0],t));u.mid.value.copy(auMix(1,A.sky[1],B.sky[1],t));u.hor.value.copy(auMix(2,A.sky[2],B.sky[2],t));
+  scene.fog.color.copy(auMix(3,A.fog[0],B.fog[0],t));scene.fog.near=Math.min(l(A.fog[1],B.fog[1]),cf*.33);scene.fog.far=Math.min(l(A.fog[2],B.fog[2]),cf);
+  sun.color.copy(auMix(4,A.sun[0],B.sun[0],t)).convertSRGBToLinear();sun.intensity=l(A.sun[1],B.sun[1]);
+  hemi.color.copy(auMix(5,A.hemi[0],B.hemi[0],t)).convertSRGBToLinear();hemi.groundColor.copy(auMix(6,A.hemi[1],B.hemi[1],t)).convertSRGBToLinear();hemi.intensity=st.hemi=l(A.hemi[2],B.hemi[2]);
+  renderer.toneMappingExposure=l(A.exposure,B.exposure);u.mode.value=t<.5?(A.skyMode||0):(B.skyMode||0);
+  u.cov.value=l(a.cov,b.cov);u.cloudCol.value.copy(auMix(7,a.col,b.col,t));u.sunCol.value.copy(auMix(8,a.sun,b.sun,t));u.sunPow.value=Math.exp(l(Math.log(a.pow),Math.log(b.pow)));u.starAmt.value=l(a.star,b.star);
+  u.sunDir.value.copy(AUV[0].set(a.dir[0],a.dir[1],a.dir[2]).normalize().lerp(AUV[1].set(b.dir[0],b.dir[1],b.dir[2]).normalize(),t).normalize());}
+/* the line where one region's ground gives way to the next: ragged, the same from either side */
+const auEdge=(x,b)=>{const q=b*1.37+.5;return 150*(Math.sin(x*.0041+q*2.1)*.55+Math.sin(x*.0113+q*5.3)*.3+Math.sin(x*.029+q*3.7)*.15);};
+/* a region's land: its ground (with the beach and the water, if it has them) and its horizon, in its own 4.8 km */
+function auLand(r,k,n){const g=new THREE.Group();g.userData.td=1;g.visible=false;world.add(g);
+  const wa=r.water,xs=wa?wa.x:1e9,sb=wa&&wa.sand?xs-wa.sand:xs,X=[];for(let x=-1700;x<=1700;x+=50)X.push(x);if(wa)X.push(xs,sb);
+  const C=[...new Set(X)].sort((a,b)=>a-b),mi=x=>x>=xs?2:x>=sb?1:0,pos=[],uv=[],nor=[],idx=[],geo=new THREE.BufferGeometry();
+  C.forEach(x=>{const z0=auEdge(x,k),z1=AU_RL+auEdge(x,auMod(k+1,n)),u=(x+1600)/3200;pos.push(x,0,z0,x,0,z1);uv.push(u,z0/3200,u,z1/3200);nor.push(0,1,0,0,1,0);});
+  let cur=-1,start=0;for(let i=0;i<C.length-1;i++){const m=mi((C[i]+C[i+1])/2);if(m!==cur){if(cur>=0)geo.addGroup(start,i*6-start,cur);cur=m;start=i*6;}const a=i*2;idx.push(a,a+1,a+2,a+1,a+3,a+2);}
+  geo.addGroup(start,(C.length-1)*6-start,cur);geo.setIndex(idx);geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('normal',new THREE.Float32BufferAttribute(nor,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
+  const water=wa?tdTex('auwater'+wa.col,()=>new THREE.MeshStandardMaterial({color:wa.col,roughness:.12,metalness:.25,envMapIntensity:1.2})):null,G=GROUND[r.ground]||grassMat;
+  const m=new THREE.Mesh(geo,[G,GROUND.sand,water||G]);m.receiveShadow=true;g.add(m);
+  if(r.hills&&AU_HILLS[r.hills.k])AU_HILLS[r.hills.k](g,r.hills,fxRnd(7177+k*331));return g;}
+function auLandPlace(land,z){const n=land.length,cur=Math.floor(z/AU_RL);land.forEach(g=>g.visible=false);for(let s=cur-1;s<=cur+1;s++){const g=land[auMod(s,n)];g.position.z=s*AU_RL;g.visible=true;}}
+/* what every road's regions share: the light, the reflections, the weather, what is in the sky, the banner */
+function auRun(R,regs,fix){const n=regs.length,st={a:null,t:-1,env:null,cur:null,hemi:hemi.intensity},S=new THREE.Group(),Wt=new Float32Array(n),wx={},sk=[];S.userData.td=1;world.add(S);
+  regs.forEach((r,k)=>{if(r.wx&&!wx[r.wx]){const i=world.children.length;addWeather(r.wx);wx[r.wx]=world.children[i];}
+    [].concat(r.sky||[]).forEach(nm=>{const f=AU_SKY[nm]&&AU_SKY[nm](S,r,st);if(f)sk.push([k,f]);});});
+  ambient.push(dt=>sk.forEach(([k,f])=>f(Wt[k],dt)));
+  return {st,update(z){const B=Math.round(z/AU_RL),t0=clamp((z-B*AU_RL+650)/900,0,1),t=t0*t0*(3-2*t0),ka=auMod(B-1,n),kb=auMod(B,n);
+    if(B!==st.a||t!==st.t){auSetLook(regs[ka].lk,regs[kb].lk,t,st);st.a=B;st.t=t;st.ka=ka;st.kb=kb;if(fix)fix(st);}
+    const dom=t<.5?ka:kb;if(dom!==st.env){st.env=dom;const E=regs[dom].lk.env||regs[dom].lk.sky;buildEnv(E[0],E[1],E[2]);}
+    Wt.fill(0);Wt[ka]=1-t;Wt[kb]+=t;
+    for(const k in wx){let w=0;regs.forEach((r,i)=>{if(r.wx===k)w+=Wt[i];});wx[k].visible=w>.02;wx[k].material.opacity=Math.min(1,w);}
+    S.position.set(0,0,z);
+    const cur=Math.floor(z/AU_RL);if(cur!==st.cur){if(st.cur!=null&&game&&game.mode==='infinite')frBanner(regs[auMod(cur,n)].n,R.name);st.cur=cur;}}};}
+const auMts=()=>world.children.find(o=>o.isGroup&&o.children.length===10&&o.children[0].geometry&&o.children[0].geometry.type==='ConeGeometry');
+/* every shader the regions need, compiled while the road is built rather than at a region's edge */
+function auCompile(list){const hid=list.filter(o=>o&&!o.visible);hid.forEach(o=>o.visible=true);try{renderer.compile(scene,camera);}catch(e){console.warn('precompile',e);}hid.forEach(o=>o.visible=false);}
+/* scenery a block builder adds for its region (see auBlock) */
+function auSceneHook(g,R,gi,night,rnd){const r=R.reg;if(!r)return;[r.scene].concat(r.add||[]).forEach(k=>{const f=AU_SCENES[k];if(f)f(g,rnd,gi,night,r);});}
+
+/* ---- the motorways: blocks for each region, the land under them, the traffic, the cameras ---- */
+autoExtras=function(R){const regs=auRegs(auKey(R));if(!regs)return;const n=regs.length;
+  inf.trees.cone.visible=inf.trees.trunk.visible=false;inf.gnd.visible=false;const mts=auMts();if(mts)mts.visible=false;
+  const blk=regs.map((r,k)=>[0,1,2].map(gi=>{const b=auBlock(Object.assign({},R,{theme:r.furn||R.theme,scene:r.scene,towns:r.towns||R.towns,tunnel:!!r.tunnel,seed:k*7,reg:r}),gi,r.night);
+    if(r.tunnel&&gi===2)b.userData.tun=[AU_BL*.2-6,AU_BL*.56+6];b.visible=false;world.add(b);return b;})),all=blk.flat();
+  const land=regs.map((r,k)=>auLand(r,k,n)),run=auRun(R,regs);
+  /* traffic on the other carriageway, coming at you */
+  const pool=CARS.filter(c=>!c.concept&&!c.noAI&&!c.forklift&&!c.build),cars=[];
+  for(let i=0;i<9;i++){const c=pool[i%pool.length],m=buildCar(c,PAINTS[(i*5)%PAINTS.length][1],false,true);m.rotation.y=Math.PI;m.userData.td=1;world.add(m);cars.push({m,v:28+Math.random()*12,x:i%2?-18.2:-25.8});}
+  const truck=[0,1].map(i=>{const g=new THREE.Group();tdBox(g,tdM(i?0xf2f2f0:0xc8281e,{roughness:.5}),2.5,3.6,12,0,2.2,-1.5,true);tdBox(g,tdM(0x2a4a8a,{roughness:.4}),2.4,2.8,2.6,0,1.8,6.2,true);g.userData.td=1;world.add(g);return {m:g,v:24+i*3,x:-25.8};});
+  const traffic=cars.concat(truck);traffic.forEach((t,i)=>{t.z=200+i*110;});
+  ambient.push(dt=>{const pz=player.veh?player.veh.z:0;
+    traffic.forEach(t=>{t.z-=t.v*dt;if(t.z<pz-160)t.z=pz+700+Math.random()*700;t.m.position.set(t.x,0,t.z);if(t.m.userData.wheels)t.m.userData.wheels.forEach(w=>w.rotation.x-=t.v*dt/.35);});
+    all.forEach(b=>{const c=b.userData.cam;if(c.t>0){c.t-=dt;c.flash.material.opacity=Math.max(0,c.t/.18);}if(b.visible&&b.userData.spin)b.userData.spin.forEach(w=>w.rotation.z+=dt*.12);});});
+  /* the blocks follow you, each from the region it falls in; a camera you pass reads your speed */
+  let last=null,act=[];const up=inf.update;
+  inf.update=function(z){up.call(this,z);const i0=Math.floor((z-200)/AU_BL);act.forEach(b=>b.visible=false);act=[];
+    for(let k=0;k<3;k++){const idx=i0+k,b=blk[auMod(Math.floor(idx/AU_RN),n)][auMod(idx,3)];b.position.z=idx*AU_BL;b.visible=true;act.push(b);}
+    auLandPlace(land,z);
+    inf.poles.forEach(p=>{p.visible=!act.some(b=>b.userData.tun&&p.position.z>b.position.z+b.userData.tun[0]&&p.position.z<b.position.z+b.userData.tun[1]);});   // no lamp posts through a tunnel roof
+    if(last!=null&&game&&game.mode==='infinite'&&player.veh)act.forEach(b=>{const cz=b.position.z+b.userData.cam.z;if(last<cz&&z>=cz){const mph=player.veh.mph,c=b.userData.cam;c.board.draw(mph);c.t=.18;
+      if(mph>TRAP_FROM)award(Math.round((mph-TRAP_FROM)*AUTO_CAM_RATE),`Autovelox ${Math.round(mph)} mph`);}});
+    last=z;run.update(z);};
+  auCompile(all.concat(land));};
+
+/* ---- the fantasy roads: their own world as before, with each region's light and what it brings ---- */
+function auDome(d){const u=sky.material.uniforms,p=d.geometry.attributes.position,c=d.geometry.attributes.color,t=AUC[9];
+  for(let i=0;i<p.count;i++){const h=Math.min(1,-p.getY(i)/1300);t.copy(u.hor.value).lerp(u.mid.value,Math.min(1,h/.12));if(h>.12)t.lerp(u.top.value,Math.pow((h-.12)/.88,.6));c.setXYZ(i,t.r,t.g,t.b);}c.needsUpdate=true;}
+fxExtras=function(R){const F=AUFX[R.fx],th=R.theme,K={R,F,night:TD_NIGHT[th]||0,t:0,z:0},regs=auRegs(auKey(R)),n=regs?regs.length:1;
+  inf.trees.cone.visible=inf.trees.trunk.visible=false;inf.marks.forEach(m=>m.visible=false);if(F.noPoles!==false)inf.poles.forEach(p=>p.visible=false);
+  const mts=auMts();if(mts)mts.visible=false;
+  const ribbon=inf.road.children[0],wallG=inf.road.children[1];
+  if(F.road)ribbon.material=F.road();
+  if(F.walls==='hide'&&wallG)wallG.visible=false;else if(F.walls&&wallG)wallG.traverse(o=>{if(o.isMesh)o.material=F.walls();});
+  if(F.ground===null)inf.gnd.visible=false;else if(F.ground){inf.gnd.material=F.ground();if(F.groundY!=null)inf.gnd.position.y=F.groundY;}
+  if(F.setup)F.setup(K);
+  const blocks=[0,1,2].map(i=>{const g=new THREE.Group();g.userData.td=1;g.userData.noMerge=true;const rnd=fxRnd(97+i*1931+R.fx.length*71);F.block(K,g,rnd,i);fxGate(K,g,F.gate,i);world.add(g);return g;});
+  const skyG=new THREE.Group();skyG.userData.td=1;world.add(skyG);if(F.sky)F.sky(K,skyG);
+  const tiles=F.far?fxTiles(F.farP||1200,t=>F.far(K,t,fxRnd(4231+R.fx.length*7))):null;
+  K.blocks=blocks;K.sky=skyG;K.tiles=tiles;
+  /* what each region brings, block by block alongside the road's own */
+  const acc=regs?regs.map((r,k)=>[0,1,2].map(gi=>{if(!r.acc||!AU_ACC[r.acc])return null;const g=new THREE.Group();g.userData.td=1;g.userData.noMerge=true;g.visible=false;AU_ACC[r.acc](K,g,fxRnd(53+k*7919+gi*131),gi,r);world.add(g);return g;})):[];
+  /* the parts of the road's sky drawn in its own colours: the fog-coloured rim round the cloud sea, the mirrored dome under the glass */
+  let rim=null,dome=null;skyG.traverse(o=>{if(!o.isMesh||!o.material||o.material.side!==THREE.BackSide)return;if(o.geometry.type==='CylinderGeometry')rim=o;else if(o.material.vertexColors)dome=o;});
+  const gm=inf.gnd.visible&&inf.gnd.material&&inf.gnd.material.color?inf.gnd.material:null,g0=gm?{c:gm.color.clone(),e:gm.emissiveIntensity||0}:null,tc=new THREE.Color();
+  const fix=st=>{if(rim)rim.material.color.copy(scene.fog.color);if(dome)auDome(dome);
+    if(g0&&regs.some(r=>r.tint)){const A=regs[st.ka].tint,B=regs[st.kb].tint,ea=A?A.em:1,eb=B?B.em:1;gm.color.copy(A?tc.set(A.col):g0.c).lerp(AUC[9].set(B?B.col:g0.c.getHex()),st.t);gm.emissiveIntensity=g0.e*(ea+(eb-ea)*st.t);}};
+  const run=regs?auRun(R,regs,fix):null;
+  ambient.push(dt=>{K.t+=dt;if(F.tick)F.tick(K,dt);
+    blocks.forEach(b=>{const c=b.userData.cam;if(c.t>0){c.t-=dt;c.flash.material.opacity=Math.max(0,c.t/.25)*.8;}});});
+  let last=null,act=[];const up=inf.update;
+  inf.update=function(z){up.call(this,z);K.z=z;const i0=Math.floor((z-200)/AU_BL);act.forEach(g=>g.visible=false);act=[];
+    for(let k=0;k<3;k++){const idx=i0+k;blocks[auMod(idx,3)].position.z=idx*AU_BL;const a=acc.length?acc[auMod(Math.floor(idx/AU_RN),n)][auMod(idx,3)]:null;if(a){a.position.z=idx*AU_BL;a.visible=true;act.push(a);}}
+    skyG.position.z=z;if(tiles)tiles.update(z);
+    if(last!=null&&game&&game.mode==='infinite'&&player.veh)blocks.forEach(b=>{const c=b.userData.cam,cz=b.position.z+c.z;if(last<cz&&z>=cz){const mph=player.veh.mph;c.board.draw(mph);c.t=.25;
+      if(mph>TRAP_FROM)award(Math.round((mph-TRAP_FROM)*AUTO_CAM_RATE),`${R.name} gate ${Math.round(mph)} mph`);}});
+    last=z;if(run)run.update(z);};
+  auCompile(acc.flat());};
+/* the menu says what is coming */
+{const ri=renderRaceInfo;renderRaceInfo=function(){ri.apply(this,arguments);if(state.mode!=='infinite')return;const L=AU_REGIONS[state.auto]||AU_REGIONS.sole,el=$('#raceBlurb');
+  if(el&&L)el.textContent+=` It changes every ${(AU_RL/1000).toFixed(1)} km: ${L.map(r=>r.n).join(' · ')}, then round again.`;};}
 TRACKS.forEach(t=>{if(!t.km)try{t.km=trackGeom(t).len/1000;}catch(e){}});renderTracks();
 /* =====================================================================
    VIEWS WITH LIFE IN THEM. The beach gets its people, umbrellas, a
