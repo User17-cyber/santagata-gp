@@ -14151,7 +14151,8 @@ function auLand(r,k,n){const g=new THREE.Group();g.userData.td=1;g.visible=false
   let cur=-1,start=0;for(let i=0;i<C.length-1;i++){const m=mi((C[i]+C[i+1])/2);if(m!==cur){if(cur>=0)geo.addGroup(start,i*6-start,cur);cur=m;start=i*6;}const a=i*2;idx.push(a,a+1,a+2,a+1,a+3,a+2);}
   geo.addGroup(start,(C.length-1)*6-start,cur);geo.setIndex(idx);geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('normal',new THREE.Float32BufferAttribute(nor,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
   const water=wa?tdTex('auwater'+wa.col,()=>new THREE.MeshStandardMaterial({color:wa.col,roughness:.12,metalness:.25,envMapIntensity:1.2})):null,G=GROUND[r.ground]||grassMat;
-  const m=new THREE.Mesh(geo,[G,GROUND.sand,water||G]);m.receiveShadow=true;g.add(m);
+  if(r.ground!=='none'){const m=new THREE.Mesh(geo,[G,GROUND.sand,water||G]);m.receiveShadow=true;g.add(m);}   // 'none': the blocks bring their own ground
+  g.position.y=r.landY||0;   // a region whose land lies below the road (the viaduct over the city)
   if(r.hills&&AU_HILLS[r.hills.k])AU_HILLS[r.hills.k](g,r.hills,fxRnd(7177+k*331));return g;}
 function auLandPlace(land,z){const n=land.length,cur=Math.floor(z/AU_RL);land.forEach(g=>g.visible=false);for(let s=cur-1;s<=cur+1;s++){const g=land[auMod(s,n)];g.position.z=s*AU_RL;g.visible=true;}}
 /* what every road's regions share: the light, the reflections, the weather, what is in the sky, the banner */
@@ -14173,9 +14174,9 @@ function auCompile(list){const hid=list.filter(o=>o&&!o.visible);hid.forEach(o=>
 function auSceneHook(g,R,gi,night,rnd){const r=R.reg;if(!r)return;[r.scene].concat(r.add||[]).forEach(k=>{const f=AU_SCENES[k];if(f)f(g,rnd,gi,night,r);});}
 
 /* ---- the motorways: blocks for each region, the land under them, the traffic, the cameras ---- */
-autoExtras=function(R){const regs=auRegs(auKey(R));if(!regs)return;const n=regs.length;
+autoExtras=function(R){const regs=auRegs(auKey(R));if(!regs)return;const n=regs.length,V=R.vars||3,Wn=Math.min(V,R.win||3);   // block variants per region, blocks in view (a road that sees further keeps more)
   inf.trees.cone.visible=inf.trees.trunk.visible=false;inf.gnd.visible=false;const mts=auMts();if(mts)mts.visible=false;
-  const blk=regs.map((r,k)=>[0,1,2].map(gi=>{const b=auBlock(Object.assign({},R,{theme:r.furn||R.theme,scene:r.scene,towns:r.towns||R.towns,tunnel:!!r.tunnel,seed:k*7,reg:r}),gi,r.night);
+  const blk=regs.map((r,k)=>[...Array(V).keys()].map(gi=>{const b=auBlock(Object.assign({},R,{theme:r.furn||R.theme,scene:r.scene,towns:r.towns||R.towns,tunnel:!!r.tunnel,seed:k*7,reg:r}),gi,r.night);
     if(r.tunnel&&gi===2)b.userData.tun=[AU_BL*.2-6,AU_BL*.56+6];b.visible=false;world.add(b);return b;})),all=blk.flat();
   const land=regs.map((r,k)=>auLand(r,k,n)),run=auRun(R,regs);
   /* traffic on the other carriageway, coming at you */
@@ -14185,11 +14186,12 @@ autoExtras=function(R){const regs=auRegs(auKey(R));if(!regs)return;const n=regs.
   const traffic=cars.concat(truck);traffic.forEach((t,i)=>{t.z=200+i*110;});
   ambient.push(dt=>{const pz=player.veh?player.veh.z:0;
     traffic.forEach(t=>{t.z-=t.v*dt;if(t.z<pz-160)t.z=pz+700+Math.random()*700;t.m.position.set(t.x,0,t.z);if(t.m.userData.wheels)t.m.userData.wheels.forEach(w=>w.rotation.x-=t.v*dt/.35);});
-    all.forEach(b=>{const c=b.userData.cam;if(c.t>0){c.t-=dt;c.flash.material.opacity=Math.max(0,c.t/.18);}if(b.visible&&b.userData.spin)b.userData.spin.forEach(w=>w.rotation.z+=dt*.12);});});
+    all.forEach(b=>{const c=b.userData.cam;if(c.t>0){c.t-=dt;c.flash.material.opacity=Math.max(0,c.t/.18);}if(!b.visible)return;if(b.userData.spin)b.userData.spin.forEach(w=>w.rotation.z+=dt*.12);if(b.userData.tick)b.userData.tick(dt);});});
   /* the blocks follow you, each from the region it falls in; a camera you pass reads your speed */
   let last=null,act=[];const up=inf.update;
   inf.update=function(z){up.call(this,z);const i0=Math.floor((z-200)/AU_BL);act.forEach(b=>b.visible=false);act=[];
-    for(let k=0;k<3;k++){const idx=i0+k,b=blk[auMod(Math.floor(idx/AU_RN),n)][auMod(idx,3)];b.position.z=idx*AU_BL;b.visible=true;act.push(b);}
+    for(let k=0;k<Wn;k++){const idx=i0+k,b=blk[auMod(Math.floor(idx/AU_RN),n)][auMod(idx,V)];b.position.z=idx*AU_BL;b.visible=true;act.push(b);
+      if(b.userData.city)b.userData.city.scale.x=auMod(Math.floor(idx/V),2)?-1:1;}   // a variant met again in the same region comes the other way round
     auLandPlace(land,z);
     inf.poles.forEach(p=>{p.visible=!act.some(b=>b.userData.tun&&p.position.z>b.position.z+b.userData.tun[0]&&p.position.z<b.position.z+b.userData.tun[1]);});   // no lamp posts through a tunnel roof
     if(last!=null&&game&&game.mode==='infinite'&&player.veh)act.forEach(b=>{const cz=b.position.z+b.userData.cam.z;if(last<cz&&z>=cz){const mph=player.veh.mph,c=b.userData.cam;c.board.draw(mph);c.t=.18;
@@ -14233,6 +14235,181 @@ fxExtras=function(R){const F=AUFX[R.fx],th=R.theme,K={R,F,night:TD_NIGHT[th]||0,
 /* the menu says what is coming */
 {const ri=renderRaceInfo;renderRaceInfo=function(){ri.apply(this,arguments);if(state.mode!=='infinite')return;const L=AU_REGIONS[state.auto]||AU_REGIONS.sole,el=$('#raceBlurb');
   if(el&&L)el.textContent+=` It changes every ${(AU_RL/1000).toFixed(1)} km: ${L.map(r=>r.n).join(' · ')}, then round again.`;};}
+/* =====================================================================
+   SOPRAELEVATA: the Autostrada over a city that does not end. The road
+   runs on a viaduct twelve metres above the streets and the city goes on
+   either side to the horizon: a grid of avenues and cross streets,
+   seventeen blocks deep each way, every building put together from a kit
+   of shapes (round glass towers, setback towers, towers tapering to a
+   mast, twisting towers, slabs, L-blocks, towers on a podium of shops,
+   blocks turned on their corner, courtyard blocks under tiled roofs) in
+   six facades, lit window by window. Lamps and traffic on every street,
+   red lights on the tall ones. Four districts, 4.8 km each, from sunset
+   into the night: the business district, the river with its bridges and
+   the big wheel, the old town round its duomo, and the supertalls of
+   Porta Nuova under the searchlights.
+   ===================================================================== */
+const MC={Y:-12,B:80,N:17};   // street level under the deck, block pitch (a 66 m block, a 14 m street), block columns each side
+const MC_FAC=[   // u x v: the metres one tile of the facade covers, so storeys come out 3-4 m and windows 1.5-3 m
+ {u:12,v:28.8,wall:'#8a8478',glass:'#1c232c',lit:.22,rough:.75,metal:.1,k:'grid',tint:[[1,1,1],[.92,.9,.86],[1,.96,.9],[.8,.8,.82],[1.06,1.02,.98]]},     // offices: windows punched in concrete
+ {u:16,v:28,wall:'#bcb6aa',glass:'#1a2430',lit:.2,rough:.7,metal:.15,k:'ribbon',tint:[[1,1,1],[.9,.92,.96],[1.05,1,.92],[.85,.85,.85]]},    // ribbon windows between bands of stone
+ {u:12,v:32,wall:'#2a4664',glass:'#1e3450',lit:.16,rough:.12,metal:.65,k:'curtain',tint:[[1,1,1],[.75,1,.9],[1.1,.9,.7],[.65,.7,.8],[.9,1,1.1]]}, // glass curtain walls: blue, green, bronze, smoke
+ {u:12,v:24,wall:'#7a3e2c',glass:'#1e1816',lit:.34,rough:.9,metal:0,k:'flats',tint:[[1,1,1],[1.15,.95,.85],[.85,.8,.78],[1.1,1.05,1],[.95,.7,.6]]},       // brick flats with balconies
+ {u:12,v:28,wall:'#c8b898',glass:'#2a2420',lit:.38,rough:.85,metal:0,k:'stone',tint:[[1,1,1],[1.05,.98,.9],[.95,.9,.85],[1.08,1.02,.96],[.92,.94,.98]]},     // old stone, tall windows, cornices
+ {u:14,v:28,wall:'#e2e2de',glass:'#1a1e26',lit:.24,rough:.5,metal:.2,k:'white',tint:[[1,1,1],[.95,.95,.92],[.9,.93,.98],[1,.97,.92]]}];    // white panels, long windows
+const MC_CROWN=[0x9ad0ff,0xffc870,0xff4aa0,0xffffff,0x7affd8];
+/* a facade: its colours, and a second map lighting only the lit windows; the same windows on both */
+function mcTex(i){return tdTex('mcfac'+i,()=>{const F=MC_FAC[i],W=128,H=256,R=[];let s=97+i*131;const r=()=>(s=(s*16807)%2147483647)/2147483647;
+  const grid=(dx,dy,ox,oy,w,h)=>{for(let y=0;y<H;y+=dy)for(let x=0;x<W;x+=dx)R.push([x+ox,y+oy,w,h]);};   // eight storeys to a tile, 32 px each
+  ({grid:()=>grid(32,32,6,8,20,16),ribbon:()=>grid(16,32,1,10,15,16),curtain:()=>grid(16,32,1,2,15,29),flats:()=>grid(32,32,9,8,14,18),stone:()=>grid(32,32,10,4,12,22),white:()=>grid(64,32,6,10,52,12)})[F.k]();
+  const lit=R.map(()=>r()<F.lit?(r()<.7?'#ffcf8a':r()<.5?'#cfe2ff':'#fff0c8'):null);
+  const mk=em=>canvasTex(W,H,g=>{g.fillStyle=em?'#000':F.wall;g.fillRect(0,0,W,H);
+    if(!em){g.fillStyle=F.glass;if(F.k==='ribbon')for(let y=0;y<H;y+=32)g.fillRect(0,y+9,W,18);   // the glass band
+      if(F.k==='curtain'){g.fillStyle='#3a4a5c';for(let y=0;y<H;y+=32)g.fillRect(0,y,W,2);for(let x=0;x<W;x+=16)g.fillRect(x,0,1,H);}
+      if(F.k==='flats'){g.fillStyle='#5a3428';for(let y=0;y<H;y+=64)g.fillRect(0,y+27,W,4);}   // balcony slabs
+      if(F.k==='stone'){g.fillStyle='#a89878';for(let y=0;y<H;y+=64)g.fillRect(0,y,W,3);}}   // cornices
+    R.forEach((q,k)=>{const c=lit[k];if(em&&!c)return;g.fillStyle=em?c:c?'#4a3e2e':F.glass;g.fillRect(q[0],q[1],q[2],q[3]);});   // by day a lit window is only a warmer pane
+    g.fillStyle=em?'#000':'#3a3a3e';g.fillRect(0,0,8,8);},1,1);   // the corner every roof samples
+  return [mk(0),mk(1)];});}
+const mcMat=(i,night)=>tdTex('mcm'+i+'|'+night,()=>{const F=MC_FAC[i],T=mcTex(i);return new THREE.MeshStandardMaterial({vertexColors:true,map:T[0],emissive:0xffffff,emissiveMap:T[1],emissiveIntensity:.06+night*1.05,roughness:F.rough,metalness:F.metal,envMapIntensity:F.metal>.3?1.3:.6});});
+const mcU=()=>aug('mcU',()=>({box:new THREE.BoxGeometry(1,1,1).toNonIndexed(),cyl:new THREE.CylinderGeometry(.5,.5,1,14).toNonIndexed(),
+  taper:new THREE.CylinderGeometry(.42,.707,1,4).rotateY(Math.PI/4).toNonIndexed(),pyr:new THREE.ConeGeometry(.707,1,4).rotateY(Math.PI/4).toNonIndexed()}));
+/* the kit: every solid of a stretch of city goes into one mesh per facade (and one for tiled roofs) */
+function mcKit(){const U=mcU(),S=[0,1,2,3,4,5,6].map(()=>({p:[],n:[],u:[],c:[]}));
+  return {U,glow:[],gpyr:[],red:[],cur:{t:[1,1,1],ou:0,ov:0},
+    /* the next building's own tint and window offset */
+    look(r,si){const F=MC_FAC[si];this.cur={t:F?F.tint[(r()*F.tint.length)|0]:[1,1,1],ou:(r()*4|0)/4,ov:(r()*8|0)/8};},
+    /* a unit solid scaled to w x h x d, standing on y0 above the street, turned ry; windows keep their size whatever the building's */
+    put(G,si,x,z,w,d,h,y0,ry){const T=S[si],P=G.attributes.position.array,N=G.attributes.normal.array,V=G.attributes.uv.array,c=Math.cos(ry||0),s=Math.sin(ry||0),F=MC_FAC[si]||MC_FAC[0];
+      for(let i=0,n=P.length/3;i<n;i++){const lx=P[i*3]*w,lz=P[i*3+2]*d,nx=N[i*3],ny=N[i*3+1],nz=N[i*3+2];
+        T.p.push(x+lx*c+lz*s,MC.Y+(y0||0)+(P[i*3+1]+.5)*h,z-lx*s+lz*c);T.n.push(nx*c+nz*s,ny,-nx*s+nz*c);T.c.push(this.cur.t[0],this.cur.t[1],this.cur.t[2]);
+        if(ny>.5||ny<-.5||G===U.pyr)T.u.push(.01,.99);
+        else{const span=G===U.cyl?Math.PI*(w+d)/2:G===U.taper?(w+d)*.4:(Math.abs(nx)>Math.abs(nz)?d:w);T.u.push(V[i*2]*span/F.u+this.cur.ou,(V[i*2+1]*h+(y0||0))/F.v+this.cur.ov);}}},
+    done(g,night){S.forEach((T,i)=>{if(!T.p.length)return;const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(T.p,3));geo.setAttribute('normal',new THREE.Float32BufferAttribute(T.n,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(T.u,2));geo.setAttribute('color',new THREE.Float32BufferAttribute(T.c,3));
+        const m=new THREE.Mesh(geo,i<6?mcMat(i,night):tdM(0xa05a3c,{roughness:.85}));m.receiveShadow=true;g.add(m);});
+      if(this.glow.length)fxI(g,auBoxG(),fxGlow(0xffffff),this.glow);if(this.gpyr.length)fxI(g,aug('mcpyrG',()=>new THREE.ConeGeometry(.707,1,4).rotateY(Math.PI/4).translate(0,.5,0)),fxGlow(0xffffff),this.gpyr);}};}
+/* plant rooms and a water tank on a flat roof */
+function mcRoof(K,r,x,z,w,d,h){const U=K.U;for(let q=r()*3|0;q>0;q--){const a=3+r()*7,b=3+r()*7;K.put(U.box,0,x+(r()-.5)*(w-a)*.8,z+(r()-.5)*(d-b)*.8,a,b,2+r()*3,h);}
+  if(h<40&&r()<.2)K.put(U.cyl,3,x+(r()-.5)*w*.4,z+(r()-.5)*d*.4,4,4,5,h);}
+/* one building on a footprint w x d, h tall: the shape picked by its height and a throw; returns its top */
+function mcBuild(K,r,x,z,w,d,h,C){const U=K.U,R=r(),pick=a=>a[(r()*a.length)|0],F=C.fac,sty=pick(h>90?F.tall:h>30?F.mid:F.low),Y=MC.Y;let top=h;K.look(r,sty);
+  if(h>100&&R<.14){const q=Math.min(w,d)*.95;K.put(U.cyl,2,x,z,q,q,h,0);if(r()<.6){K.put(U.cyl,2,x,z,q*.72,q*.72,h*.1,h);top=h*1.1;}K.glow.push([x,Y+top-2.4,z,0,q*.74,1.4,q*.74,pick(MC_CROWN)]);}   // a round glass tower, its crown lit
+  else if(h>70&&R<.3){const t=[[1,.5],[.8,.78],[.58,1]];t.forEach(([f,hf],k)=>{const y0=k?h*t[k-1][1]:0;K.put(U.box,sty,x,z,w*f,d*f,h*hf-y0,y0);});   // a setback tower: a pyramid, a spire or nothing on top
+    if(r()<.45){K.put(U.pyr,sty,x,z,w*.58,d*.58,h*.07,h);top=h*1.07;}else if(r()<.5){K.put(U.cyl,5,x,z,1.4,1.4,h*.18,h);top=h*1.18;}}
+  else if(h>120&&R<.4){K.put(U.taper,sty,x,z,w,d,h,0);K.put(U.cyl,5,x,z,1.2,1.2,h*.12,h);top=h*1.12;}   // tapering to a mast
+  else if(h>150&&R<.47){const n=Math.min(44,h/8|0),tw=(r()<.5?-1:1)*(.02+r()*.03);for(let k=0;k<n;k++)K.put(U.box,2,x,z,w*.75,d*.75,h/n,k*h/n,k*tw);K.glow.push([x,Y+h,z,n*tw,w*.77,1.6,d*.77,pick(MC_CROWN)]);}   // twisting as it rises
+  else if(h>45&&R<.62){const ph=8+r()*8;K.put(U.box,r()<.5?4:3,x,z,w,d,ph,0);K.put(U.box,sty,x,z,w*.62,d*.62,h-ph,ph);mcRoof(K,r,x,z,w*.62,d*.62,h);}   // a tower on a podium of shops
+  else if(w>34&&R<.72){const sw=w*.34,gp=w*.08;K.put(U.box,sty,x-gp-sw/2,z,sw,d*.9,h,0);K.put(U.box,sty,x+gp+sw/2,z,sw,d*.9,h*(.7+r()*.3),0);}   // twin slabs
+  else if(w>34&&R<.8){K.put(U.box,sty,x,z-d*.27,w,d*.46,h,0);K.put(U.box,sty,x-w*.27,z+d*.23,w*.46,d*.54,h*(.5+r()*.4),0);mcRoof(K,r,x,z-d*.27,w,d*.46,h);}   // an L
+  else if(h>60&&R<.86){K.put(U.box,sty,x,z,w*.72,d*.72,h,0,Math.PI/4);K.glow.push([x,Y+h,z,Math.PI/4,w*.74,1.2,d*.74,pick(MC_CROWN)]);}   // turned on its corner
+  else if(h<26&&C.tile&&R<.94){K.put(U.box,sty,x,z,w,d,h,0);K.put(U.pyr,6,x,z,w,d,3+r()*3,h);}   // a tiled roof
+  else{K.put(U.box,sty,x,z,w,d,h,0);mcRoof(K,r,x,z,w,d,h);}
+  if(top>120)K.red.push(x,Y+top+2,z);return top;}
+/* the districts: how tall, how dense, which facades, what stands out */
+const MC_D={
+ cbd:{base:[22,64],peak:300,cores:2,low:.06,park:.04,plaza:.05,fac:{tall:[2,2,5,0],mid:[0,1,5,2],low:[1,4,0]},mark:'towers'},
+ river:{base:[16,44],peak:130,cores:1,low:.12,park:.07,plaza:.04,river:[46,190],fac:{tall:[2,5,0],mid:[1,0,4,5],low:[4,3,1]},mark:'river',trees:.3},
+ old:{base:[10,24],peak:34,cores:0,low:.22,park:.08,plaza:.06,court:.55,fac:{tall:[4,0],mid:[4,3,0],low:[3,4,4,1]},mark:'old',trees:.4,tile:true},
+ nuova:{base:[28,76],peak:360,cores:3,low:.04,park:.05,plaza:.06,fac:{tall:[2,2,5],mid:[2,5,0,1],low:[0,1,5]},mark:'nuova'}};
+/* the landmarks each district keeps for two of its four stretches: which lot, which landmark */
+function mcMarks(kind,gi,r){const L=[],at=(j,i,b,sd)=>L.push({sd:sd||(r()<.5?-1:1),j,i,b});if(gi!==1&&gi!==3)return L;
+  if(kind==='towers'||kind==='nuova'&&gi===3){at(1,2,'spire');at(0,5,'twist');at(2,7,'crown');}
+  else if(kind==='nuova'){at(2,4,'needle');at(0,1,'crown');at(1,7,'twist');}
+  else if(kind==='river'){if(gi===1)at(2,4,'wheel',1);else at(4,4,'stadium',1);}
+  else if(kind==='old')at(1,4,gi===1?'duomo':'arena');
+  return L;}
+/* a stretch of the city: 800 m of road, the viaduct, and the city to 1.4 km either side */
+AU_SCENES.metro=(g,r,gi,night,reg)=>{const C=MC_D[reg.city]||MC_D.cbd,Y=MC.Y,B=MC.B,city=new THREE.Group(),K=mcKit(),U=K.U,lots=[],lamps=[],trees=[],anims=[],RV=C.river,pick=a=>a[(r()*a.length)|0];
+  g.add(city);g.userData.city=city;   // the city may be turned round (see autoExtras); the viaduct and the road furniture never are
+  /* the viaduct: the deck under both carriageways, a parapet and a line of light along each edge, piers on crossbeams */
+  const conc=tdM(0x8e8c86,{roughness:.85});tdBox(g,conc,54,2.4,AU_BL,-10,-1.25,AU_BL/2);[-37.2,17.2].forEach(x=>{tdBox(g,conc,.5,1.1,AU_BL,x,.5,AU_BL/2);tdBox(g,fxGlow(0xffc890),.12,.14,AU_BL,x+(x>0?.3:-.3),-.8,AU_BL/2);});
+  const pier=[];for(let z=20;z<AU_BL;z+=40)pier.push([-22,Y,z,0,2.4,-Y-2.4,3],[2,Y,z,0,2.4,-Y-2.4,3]);fxI(g,auBoxG(),conc,pier);fxI(g,auBoxG(),conc,pier.filter((a,i)=>i%2===0).map(a=>[-10,-4.6,a[2],0,34,2.2,3.4]));
+  /* where the tallest stand: up to three clusters in this stretch */
+  const cores=[];for(let k=0;k<C.cores;k++)cores.push([(r()<.5?-1:1)*(140+r()*560),r()*AU_BL,180+r()*140]);
+  const coreF=(x,z)=>{let m=0;cores.forEach(([cx,cz,R])=>{m=Math.max(m,Math.exp(-((x-cx)**2+(z-cz)**2)/(R*R)));});return m;};
+  const marks=mcMarks(C.mark,gi,r),busy=new Set();marks.forEach(m=>{if(m.b==='stadium')for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)busy.add(m.sd+'|'+(m.j+a)+'|'+(m.i+b));});
+  for(const sd of [-1,1])for(let j=0;j<MC.N;j++){const x0=40+j*B,cx=sd*(x0+33);
+    if(RV&&sd>0&&x0+66>RV[0]-6&&x0<RV[1]+6)continue;   // the river runs here
+    for(let i=0;i<10;i++){const cz=i*B+40,mk=marks.find(m=>m.sd===sd&&m.j===j&&m.i===i);
+      if(mk){lots.push([cx,cz,'q']);mcLandmark(mk.b,K,city,anims,lamps,cx,cz,sd);continue;}
+      if(busy.has(sd+'|'+j+'|'+i)){lots.push([cx,cz,'q']);continue;}
+      const q=r();if(q<C.park){lots.push([cx,cz,'p']);for(let k=0;k<10;k++)trees.push([cx+(r()-.5)*56,cz+(r()-.5)*56,3+r()*2,3+r()*2,3+r()*2,1,r()*6]);continue;}
+      if(q<C.park+C.plaza){lots.push([cx,cz,'q']);continue;}
+      lots.push([cx,cz,'b']);
+      const core=coreF(cx,cz);let H=(C.base[0]+r()*(C.base[1]-C.base[0])+core*C.peak*(.55+r()*.7))*(1-.55*clamp((x0-500)/900,0,1));if(r()<C.low)H=6+r()*12;   // the city thins out toward its edges
+      if(j>=11){const sf=pick(H>30?C.fac.mid:C.fac.low);K.look(r,sf);K.put(U.box,sf,cx,cz,44+r()*20,44+r()*20,H*.8,0);continue;}   // the far city: one block to a lot
+      if(C.court&&H<44&&r()<C.court){const h1=Math.max(10,H)*(.85+r()*.3),s=pick(C.fac.low),D=12;K.look(r,s);   // a courtyard block, the old town's way
+        [[0,-24,60,D],[0,24,60,D],[-24,0,D,36],[24,0,D,36]].forEach(([ox,oz,ww,dd],k)=>{const hh=h1*(k<2?1:.9+r()*.2);K.put(U.box,s,cx+ox,cz+oz,ww,dd,hh,0);if(C.tile)K.put(U.pyr,6,cx+ox,cz+oz,ww,dd,3.5,hh);});continue;}
+      if(core>.4||H>85||r()<.35){const w=40+r()*22,d=40+r()*22;mcBuild(K,r,cx+(r()-.5)*(66-w)*.8,cz+(r()-.5)*(66-d)*.8,w,d,H,C);}
+      else{const n=2+(r()*3|0);for(let k=0;k<n;k++)mcBuild(K,r,cx+(k%2?-1:1)*16.5,cz+(k>1?-1:1)*16.5,18+r()*10,18+r()*10,H*(.6+r()*.6),C);}}}
+  /* trees along the avenues nearest the road, where the district has them */
+  if(C.trees)for(const sd of [-1,1])for(let j=0;j<3;j++){const ax=sd*(40+j*B+73);for(let z=10;z<AU_BL;z+=14)if(r()<C.trees)[-5.5,5.5].forEach(o=>trees.push([ax+o,z,2.2,3,2.6,1,r()*6]));}
+  /* the river: water at street level between its embankments, a bridge on every other cross street, boats */
+  if(RV){const mid=(RV[0]+RV[1])/2,W2=RV[1]-RV[0],w=new THREE.Mesh(new THREE.PlaneGeometry(W2,AU_BL).rotateX(-Math.PI/2),tdTex('mcriver',()=>new THREE.MeshStandardMaterial({color:0x0e2230,roughness:.08,metalness:.4,envMapIntensity:1.2})));
+    w.position.set(mid,Y+.25,AU_BL/2);city.add(w);RV.forEach(x=>tdBox(city,tdM(0x6a6660,{roughness:.9}),1.2,1.2,AU_BL,x,Y+.6,AU_BL/2));
+    for(let i=0;i<10;i+=2){tdBox(city,conc,W2+16,1.4,16,mid,Y+.5,i*B);for(let x=RV[0];x<=RV[1];x+=12)lamps.push(x,Y+5,i*B-7.5,x,Y+5,i*B+7.5);}
+    const boats=[0,1,2].map(k=>{const b=new THREE.Group();b.add(new THREE.Mesh(new THREE.BoxGeometry(8,3,28).translate(0,1.5,0),tdM(0xe8e4dc,{roughness:.5})));const c=new THREE.Mesh(new THREE.BoxGeometry(6,3,14).translate(0,4.5,0),fxGlow(0xffd8a0));b.add(c);
+      b.position.set(RV[0]+30+k*50,Y+.2,r()*AU_BL);city.add(b);return {b,v:(k%2?1:-1)*(4+k*2)};});
+    anims.push(dt=>boats.forEach(o=>{o.b.position.z=auMod(o.b.position.z+o.v*dt,AU_BL);}));}
+  K.done(city,night);
+  if(trees.length){const tg=new THREE.Group();tg.position.y=Y;city.add(tg);auTrees(tg,trees,0x4a3a2a,0x2f4a2a);tg.traverse(o=>o.castShadow=false);}   // down in the street their shadows would never be seen
+  /* the streets: asphalt, pavements, parks and squares painted once; the sodium light on them for the night */
+  const sx=1024/3400,sz=256/800,X=x=>(x+1700)*sx,Z=z=>z*sz;
+  const paint=em=>canvasTex(1024,256,c=>{c.fillStyle=em?'#170e05':'#232327';c.fillRect(0,0,1024,256);
+    lots.forEach(([x,z,t])=>{const x0=X(x-33),z0=Z(z-33),w=66*sx,d=66*sz;if(em){c.fillStyle=t==='q'?'#1a1208':'#000';c.fillRect(x0,z0,w,d);return;}
+      c.fillStyle='#5e5c58';c.fillRect(x0-1,z0-1,w+2,d+2);c.fillStyle=t==='p'?'#24401f':t==='q'?'#8a857c':'#45433f';c.fillRect(x0+1,z0+1,w-2,d-2);
+      if(t==='p'){c.fillStyle='#1a3216';for(let k=0;k<14;k++)c.fillRect(x0+2+((k*37)%Math.max(1,w-4)),z0+2+((k*53)%Math.max(1,d-4)),2,2);}});
+    if(RV){c.fillStyle=em?'#000':'#0a0e14';c.fillRect(X(RV[0]),0,(RV[1]-RV[0])*sx,256);}
+    if(em){c.fillStyle='#6a4214';for(let k=0;k<lamps.length;k+=3)c.fillRect(X(lamps[k])-1,Z(lamps[k+2])-1,2,2);}},1,1);
+  /* the lamps: every 40 m down each avenue and along each cross street */
+  for(const sd of [-1,1])for(let j=0;j<MC.N;j++){const ax=sd*(40+j*B+73);if(RV&&sd>0&&ax>RV[0]-10&&ax<RV[1]+10)continue;for(let z=20;z<AU_BL;z+=40)lamps.push(ax+5,Y+6,z,ax-5,Y+6,z+20);}
+  for(let i=0;i<10;i++)for(let x=-1390;x<=1390;x+=40)if(Math.abs(x)>38&&!(RV&&x>RV[0]&&x<RV[1]&&i%2))lamps.push(x,Y+6,i*B+5);
+  const gm=new THREE.Mesh(new THREE.PlaneGeometry(3400,AU_BL).rotateX(-Math.PI/2),new THREE.MeshStandardMaterial({map:paint(0),emissive:0xffffff,emissiveMap:paint(1),emissiveIntensity:.15+.85*night,roughness:.95}));
+  gm.position.set(0,Y,AU_BL/2);gm.receiveShadow=true;city.add(gm);
+  const P=(arr,col,size,op)=>{const q=new THREE.BufferGeometry();q.setAttribute('position',new THREE.Float32BufferAttribute(arr,3));const p=new THREE.Points(q,new THREE.PointsMaterial({color:col,size,sizeAttenuation:true,transparent:true,opacity:op,depthWrite:false,blending:THREE.AdditiveBlending}));city.add(p);return p;};
+  P(lamps,0xffb060,3.4,.3+.7*night);const redP=K.red.length?P(K.red,0xff2020,8,1):null;
+  /* traffic: headlights one way, tail-lights the other, on the avenues and the cross streets */
+  const N=420,tp=new Float32Array(N*3),tc=new Float32Array(N*3),car=[];
+  for(let i=0;i<N;i++){const av=r()<.55,dir=r()<.5?1:-1;let line;if(av){let ax;do{ax=(r()<.5?-1:1)*(40+(r()*MC.N|0)*B+73);}while(RV&&ax>RV[0]-10&&ax<RV[1]+10);line=ax+dir*3;}else{const ii=r()*10|0;line=(RV?ii&~1:ii)*B+dir*3;}   // over the river only where there is a bridge
+    car.push({av,line,p:r(),v:dir*(9+r()*11)});tc.set(dir>0?[1,.92,.8]:[1,.12,.06],i*3);}
+  const tq=new THREE.BufferGeometry();tq.setAttribute('position',new THREE.BufferAttribute(tp,3));tq.setAttribute('color',new THREE.BufferAttribute(tc,3));
+  const tpts=new THREE.Points(tq,new THREE.PointsMaterial({size:2.8,vertexColors:true,sizeAttenuation:true,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));tpts.frustumCulled=false;city.add(tpts);
+  tdMerge(city);tdMerge(g);   // the deck, the bridges, the gantries: one draw per material
+  let T=0;g.userData.tick=dt=>{T+=dt;for(let i=0;i<N;i++){const c=car[i];c.p+=c.v*dt/(c.av?AU_BL:2780);c.p-=Math.floor(c.p);if(c.av){tp[i*3]=c.line;tp[i*3+2]=c.p*AU_BL;}else{tp[i*3]=-1390+c.p*2780;tp[i*3+2]=c.line;}tp[i*3+1]=Y+.8;}
+    tq.attributes.position.needsUpdate=true;if(redP)redP.material.opacity=(T%1.6)<.25?1:.15;anims.forEach(f=>f(dt,T));};};
+/* the landmarks, built into their lot */
+function mcLandmark(b,K,city,anims,lamps,x,z,sd){const U=K.U,Y=MC.Y;K.cur={t:[1,1,1],ou:0,ov:0};
+  if(b==='spire'){[[58,430],[40,500],[24,560]].forEach(([w,h])=>K.put(U.box,2,x,z,w,w,h,0));K.glow.push([x,Y+546,z,0,24.6,6,24.6,0x9ad0ff]);K.put(U.cyl,5,x,z,2.5,2.5,110,560);K.red.push(x,Y+672,z);}
+  else if(b==='twist'){for(let k=0;k<36;k++)K.put(U.box,2,x,z,46,46,10,k*10,k*.045);K.glow.push([x,Y+360,z,36*.045,48,4,48,0xff4aa0]);K.red.push(x,Y+372,z);}
+  else if(b==='crown'){K.put(U.box,5,x,z,52,52,380,0);K.gpyr.push([x,Y+380,z,0,38,60,38,0xffc870]);K.red.push(x,Y+445,z);}
+  else if(b==='needle'){const m=(geo,mat,y)=>{const o=new THREE.Mesh(geo,mat);o.position.set(x,Y+y,z);city.add(o);return o;};
+    m(new THREE.CylinderGeometry(6,9,330,16),tdM(0x3a3c44,{roughness:.8}),165);m(new THREE.CylinderGeometry(26,22,16,32),tdM(0x2a2c34,{roughness:.6}),300);
+    m(new THREE.CylinderGeometry(26.3,26.3,4,40,1,true),fxGlow(0xffd8a0),302).material.side=THREE.DoubleSide;m(new THREE.CylinderGeometry(.8,1.6,90,8),tdM(0xd0d4da,{metalness:.7}),353);K.red.push(x,Y+398,z);
+    const beacon=new THREE.Group();beacon.position.set(x,Y+312,z);city.add(beacon);const bm=new THREE.Mesh(new THREE.ConeGeometry(30,500,16,1,true),fxAdd(0xbfd4ff,.06,{fog:false}));bm.rotation.z=Math.PI/2;bm.position.x=250;beacon.add(bm);
+    /* and two searchlights sweeping the clouds from its foot */
+    const beams=[0,1].map(k=>{const piv=new THREE.Group();piv.position.set(x+(k?60:-50),Y+5,z+(k?40:-30));piv.add(new THREE.Mesh(new THREE.CylinderGeometry(38,1.5,1400,18,1,true).translate(0,700,0),fxAdd(0x9ab8ff,.06,{fog:false})));city.add(piv);return piv;});
+    anims.push((dt,T)=>{beacon.rotation.y+=dt*.8;beams[0].rotation.set(.35+Math.sin(T*.3)*.15,T*.25,0);beams[1].rotation.set(.3+Math.sin(T*.37+1)*.15,-T*.21+2,0);});}
+  else if(b==='wheel'){const R=55,w=new THREE.Group(),rim=tdM(0xdadde2,{metalness:.6,roughness:.4});w.position.set(x,Y+R+12,z);city.add(w);w.add(new THREE.Mesh(new THREE.TorusGeometry(R,.8,6,64),rim));
+    for(let k=0;k<12;k++){const s=new THREE.Mesh(new THREE.BoxGeometry(.6,R*2,.6),rim);s.rotation.z=k/12*Math.PI;w.add(s);}
+    const gc=[0xffd040,0x2fe8ff,0xff4a6a,0x7aff6a];for(let k=0;k<24;k++){const a=k/24*6.283,c=new THREE.Mesh(new THREE.BoxGeometry(3,3,3),fxGlow(gc[k%4]));c.position.set(Math.cos(a)*R,Math.sin(a)*R,0);w.add(c);}
+    [-1,1].forEach(s=>{const l=new THREE.Mesh(new THREE.BoxGeometry(2,R+14,2),rim);l.position.set(x+s*14,Y+(R+14)/2,z);l.rotation.z=s*.24;city.add(l);});anims.push(dt=>{w.rotation.z+=dt*.05;});}
+  else if(b==='stadium'){const st=new THREE.Mesh(new THREE.TorusGeometry(120,22,10,48),tdM(0xd8d4cc,{roughness:.6}));st.rotation.x=Math.PI/2;st.scale.set(1,.7,1);st.position.set(x,Y+20,z);city.add(st);
+    const f=new THREE.Mesh(new THREE.CircleGeometry(100,48),tdM(0x2a7a3a,{roughness:1}));f.rotation.x=-Math.PI/2;f.scale.set(1,.7,1);f.position.set(x,Y+2,z);city.add(f);
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(142,1.4,6,64),fxGlow(0xffffff));ring.rotation.x=Math.PI/2;ring.scale.set(1,.72,1);ring.position.set(x,Y+42,z);city.add(ring);
+    const fl=[];[[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,c])=>{K.put(U.box,0,x+a*150,z+c*104,3,3,80,0);fl.push([x+a*150,Y+80,z+c*104,0,10,3,4,0xfff8e0]);});fxI(city,auBoxG(),fxGlow(0xffffff),fl);}
+  else if(b==='duomo'){K.put(U.box,4,x,z,30,64,26,0);K.put(U.box,4,x,z,64,24,26,0);K.put(U.pyr,6,x,z,30,64,8,26);K.put(U.cyl,4,x,z,28,28,10,26);
+    const d=new THREE.Mesh(new THREE.SphereGeometry(15,24,12,0,Math.PI*2,0,Math.PI/2),tdM(0x9a6a52,{roughness:.6}));d.position.set(x,Y+36,z);city.add(d);K.put(U.cyl,4,x,z,4,4,6,51);
+    K.put(U.box,4,x+24,z-24,9,9,72,0);K.put(U.pyr,6,x+24,z-24,9,9,10,72);for(let a=0;a<6.28;a+=.5)lamps.push(x+Math.cos(a)*30,Y+2,z+Math.sin(a)*40);}   // floodlit
+  else if(b==='arena'){const st=tdM(0xc8b898,{roughness:.9,side:THREE.DoubleSide});[[32,34],[24,28]].forEach(([R,h])=>{const o=new THREE.Mesh(new THREE.CylinderGeometry(R,R,h,48,1,true),st);o.scale.set(1,1,1.25);o.position.set(x,Y+h/2,z);city.add(o);});
+    const f=new THREE.Mesh(new THREE.CircleGeometry(24,40),tdM(0xc8a878,{roughness:1}));f.rotation.x=-Math.PI/2;f.scale.set(1,1.25,1);f.position.set(x,Y+.3,z);city.add(f);for(let a=0;a<6.28;a+=.35)lamps.push(x+Math.cos(a)*34,Y+3,z+Math.sin(a)*42);}}
+/* the road itself, and its four districts */
+AUTOS.metro={name:"Sopraelevata · Sant'Agata",theme:'tower',vars:4,win:4,towns:['CENTRO','LUNGOFIUME','DUOMO','PORTA NUOVA'],
+  blurb:'Over the city on a viaduct: avenues and blocks to the horizon on both sides, towers of glass and stone, the river and its bridges, from sunset into the night.'};
+AU_REGIONS.metro=[
+ {n:'Centro direzionale',look:AU_LK('tower',{fog:[0x3a3450,420,2600],sun:[0xffb070,1.7],hemi:[0xa8b4e0,0x2a2018,.85],exposure:1}),scene:'metro',city:'cbd',furn:'city',ground:'none',landY:MC.Y,hills:{k:'skyline',x:1760,h:1.6,lit:.3,win:'m'},towns:['CENTRO','STAZIONE','DUOMO','FIERA'],night:.45},
+ {n:'Lungofiume',look:AU_LK('hyper',{sky:[0x0a1638,0x1e3a7a,0x6a7ab8],fog:[0x1e2a4a,320,2300],sun:[0x8aa8ff,.8],hemi:[0x5a6aa0,0x1a1a24,.95],exposure:1.12,cloud:{star:.5}}),scene:'metro',city:'river',furn:'city',ground:'none',landY:MC.Y,hills:{k:'skyline',x:1760,h:1.2,lit:.45,win:'m'},towns:['LUNGOFIUME','PORTO','STADIO','LUNA PARK'],night:.75},
+ {n:'Città vecchia',look:AU_LK('hyper',{sky:[0x03040a,0x0c1024,0x2a2030],fog:[0x16141e,260,1900],sun:[0x9aa8ff,.5],hemi:[0x3a4060,0x100c0a,.9],exposure:1.18,cloud:{star:.8}}),scene:'metro',city:'old',furn:'city',ground:'none',landY:MC.Y,hills:{k:'skyline',x:1760,h:.6,lit:.5,win:'o'},towns:['DUOMO','SAN LORENZO','PORTA ROMANA','NAVIGLI'],night:1},
+ {n:'Porta Nuova',look:AU_LK('hyper',{fog:[0x0c0e1c,380,2700],hemi:[0x8a8070,0x0a0a0c,.75],exposure:1.1}),scene:'metro',city:'nuova',furn:'city',ground:'none',landY:MC.Y,hills:{k:'skyline',x:1760,h:2,lit:.4,win:'m',edge:[0xff4aa0,0x9ad0ff,0xffc870]},towns:['PORTA NUOVA','GARIBALDI','ISOLA','BICOCCA'],night:1}];
 TRACKS.forEach(t=>{if(!t.km)try{t.km=trackGeom(t).len/1000;}catch(e){}});renderTracks();
 /* =====================================================================
    VIEWS WITH LIFE IN THEM. The beach gets its people, umbrellas, a
