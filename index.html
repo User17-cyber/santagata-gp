@@ -14653,6 +14653,12 @@ function olMap(){const c=mapCtx,S=340,{pts,n,right}=track,W=track.open;c.clearRe
   const ref=CARS.find(c=>c.id==='chiron')||CARS[0],mesh=new THREE.Object3D();mesh.userData.wheels=[];const r=new AIRacerLegacy(ref,mesh,0,OL_K[def.open.route||0].g*(def.open.medalK||1));r.s=0;r.idx=0;r.lap=0;r.v=0;
   const dt=1/30;let t=0,first=null,lap=0;for(let k=0;k<60000;k++){const b=r.lap;r.step(dt,true,null,0);t+=dt;if(r.lap!==b){if(first==null)first=t;else{lap=t-first;break;}}}
   track=saved;if(!lap)lap=180;const out={};MEDALS.forEach(([m,f])=>out[m]=lap*f);return MEDAL_T[def.id]=out;};}
+/* Prize money by distance: open country pays more a kilometre than any circuit (the best of those, Neon District,
+   pays about $9,600 a km for the win); 4th place gets three fifths of 1st. Medals, contracts and the lap bonuses
+   follow from the purse. */
+const OL_PAY_KM=12000;
+{const pf=prizeFor;prizeFor=function(t){if(!(t&&t.open))return pf.apply(this,arguments);
+  const km=(t.km||trackGeom(t).len/1000)*(t.laps||2),hi=Math.round(km*OL_PAY_KM/1000)*1000;return [Math.round(hi*.6/1000)*1000,hi];};}
 {const rt=renderTracks;renderTracks=function(){const r=rt.apply(this,arguments);if(state.mode==='track')document.querySelectorAll('#tracks .trk').forEach(b=>{const t=TRACKS.find(x=>x.id===b.dataset.t),s=b.querySelector('small');
   if(t&&t.open&&s&&!s.dataset.ol){s.dataset.ol=1;s.textContent='Open country · '+s.textContent;}});return r;};}
 /* ---- Open country (v176): what stands on the land ----------------------------------------------
@@ -14770,7 +14776,7 @@ THEMES.erg={sky:[0x2a64c0,0x86b2e2,0xe8d4b0],fog:[0xd2bf9c,700,3200],sun:[0xfff0
   h=(x,z)=>{let y=4+5*olFbm(x/700,z/700,3,3);const dO=pond(x,z),dP=pan(x,z);y+=dunes(x,z)*olSS(90,240,dO)*olSS(.9,1.6,dP);
     {const d=Math.hypot(x-DU[0],z-DU[1]),a=Math.atan2(z-DU[1],x-DU[0]);y+=46*Math.exp(-((d/(150*(1+.18*Math.sin(5*a+1))))**2)*1.4);}
     y-=12*Math.exp(-((dO/90)**2));if(dP<1.25)y+=(1.4-y)*(1-olSS(.85,1.25,dP));return y+jebel(x,z);};
-  TRACKS.push({id:'sabbia',name:'Mare di Sabbia',theme:'erg',laps:2,prize:[35000,60000],
+  TRACKS.push({id:'sabbia',name:'Mare di Sabbia',theme:'erg',laps:2,
     blurb:'Open country: a rally raid through the dunes, no walls anywhere. Drive through the checkpoint arches in order and take any line you like between them: over the big dune, through the slot in the ridge, across the salt pan, past the oasis.',
     pts:olPlan(G,[[40],[150,230,150],[85,-85,85,-60],[-120,-160,-120],[-150,-200,-150],[150,180,150],[-40]],[150,0]),
     open:{seed:11,route:0,water:-1,hw:8,oob:260,drift:.5,gates:G,h,
@@ -14804,7 +14810,7 @@ THEMES.frost={sky:[0x2e4e8a,0x9cb0d6,0xf6d0b6],fog:[0xc6cce0,650,3300],sun:[0xff
   rp=p=>L[2].at(.5+25*Math.sin(p/40)/L[2].L,p),ridge=(x,z)=>{const [a,p]=L[2].loc(x,z);return Math.abs(a-25*Math.sin(p/40))<3.2&&p>-210&&p<40&&Math.abs(p+54)>7&&Math.abs(p-16)>7;},
   h=(x,z)=>{const e=lakeE(x,z);let y=e<1?0:(e-1)*55*(1+.7*olFbm(x/420,z/420,16,3))+olSS(1,1.3,e)*22*olFbm(x/170,z/170,17,4);const d=isl(x,z);
     if(d<90)y=Math.max(y,8*Math.exp(-((d/42)**2))-1+2.4*olFbm(x/24,z/24,18,2)*Math.exp(-((d/50)**2)));const w=e<.96?lead(x,z):0;return w>.02?Math.min(y,-3.4*w):y;};
-  TRACKS.push({id:'cristallo',name:'Lago di Cristallo',theme:'frost',laps:2,prize:[35000,60000],
+  TRACKS.push({id:'cristallo',name:'Lago di Cristallo',theme:'frost',laps:2,
     blurb:'Open country: an ice race on a frozen alpine lake, the piste ploughed through the snow. Take the arches in order and any line between them: bare ice is quick in a straight line and treacherous in a turn, and the lake has an island, a reef, a village of fishing huts, a pressure ridge and a lead of open water to find a way round.',
     pts:olPlan(G,[[50],[80,110,80],[70,90,70],[-100,-140,-100],[60,80,60],[80,100],[70]],[140,0]),
     open:{seed:21,route:8,hw:9,water:-.5,oob:260,drift:.35,gates:G,h,
@@ -14842,7 +14848,7 @@ THEMES.savanna={sky:[0x3a68b0,0x9cc0e2,0xf2d8aa],fog:[0xd8c8a6,900,3900],sun:[0x
   kop=(x,z)=>{const d=Math.hypot(x-KO[0],z-KO[1]),a=Math.atan2(z-KO[1],x-KO[0]);return 24*Math.exp(-((d/(72*(1+.2*Math.sin(3*a+1))))**2.4));},
   h=(x,z)=>{let y=4+4*olFbm(x/600,z/600,31,3)+1.4*olFbm(x/90,z/90,32,2);const w=wash(x,z);if(w<16)y-=3.2*olSS(15,10,w)*olSS(460,400,Math.abs(L[2].loc(x,z)[0]));
     y+=kop(x,z)*(1+.25*olFbm(x/14,z/14,33,2));const [pd,pp]=pond(x,z),f=olSS(.75,.45,pd);if(f>0)y+=(-2.6+1.6*Math.exp(-(((pp-35)/11)**2))-y)*f;return y;};   // the waterhole, a bar of shallows across it
-  TRACKS.push({id:'savana',name:'Savana Rossa',theme:'savanna',laps:2,prize:[35000,60000],
+  TRACKS.push({id:'savana',name:'Savana Rossa',theme:'savanna',laps:2,
     blurb:'Open country: red dirt across the grasslands, no walls anywhere. Take the arches in order and any line between them: over the kopje, along the dry riverbed, through the shallows at the waterhole, between the acacias or straight through the village.',
     pts:olPlan(G,[[70],[120,170,120],[90,110,90],[-110,-140,-110],[80,100,80],[70,90,70],[70]],[140,0]),
     open:{seed:31,route:12,hw:8,water:-.6,oob:260,drift:.5,gates:G,h,
@@ -14885,7 +14891,7 @@ THEMES.tropic={sky:[0x1e66d0,0x78b6ea,0xd6eaf2],fog:[0xbcd6e6,800,3700],sun:[0xf
     {const d=Math.hypot(x-HL[0],z-HL[1]);y+=40*Math.exp(-((d/75)**2))-14*Math.exp(-((d/18)**2));}   // an old volcano, a crater in its top
     {const d=Math.hypot(x-SW[0],z-SW[1]);if(d<170){const pl=olFbm(x/45,z/45,45,3);y+=((pl>.58?-.3:.5+pl)-y)*olSS(170,120,d);}}   // the mangrove swamp
     return y;};
-  TRACKS.push({id:'faro',name:'Isola del Faro',theme:'tropic',laps:2,prize:[35000,60000],
+  TRACKS.push({id:'faro',name:'Isola del Faro',theme:'tropic',laps:2,
     blurb:'Open country: round a tropical island, the sea on every side. Take the arches in order and any line between them: across the lagoon between the stilt houses, through the jungle, over the old crater, through the mangroves or out past the lighthouse.',
     pts:olPlan(G,[[40],[-120,-150,-120],[60,80,60],[100,130,100],[70,90,70],[70,100]],[140,58]),
     open:{seed:51,route:0,hw:8,water:0,oob:260,drift:.5,gates:G,h,ry:y=>Math.max(y,1.1),
@@ -14930,7 +14936,7 @@ THEMES.moor={sky:[0x56677a,0x98a4ae,0xc6cac6],fog:[0xb2b8b6,450,2800],sun:[0xfff
     {const [a,p]=L[3].loc(x,z),f=olSS(1.25,.9,Math.hypot(a/150,p/80));if(f>0)y+=(-3+2.1*Math.exp(-(((a-40)/12)**2))-y)*f;}   // the loch, a ford across it
     {const d=Math.hypot(x-BG[0],z-BG[1]);if(d<140){const pl=olFbm(x/40,z/40,54,3);y+=((pl>.57?-.3:.35+pl*.5)-y)*olSS(140,90,d);}}   // the bog
     return y;};
-  TRACKS.push({id:'brughiera',name:'Brughiera',theme:'moor',laps:2,prize:[35000,60000],
+  TRACKS.push({id:'brughiera',name:'Brughiera',theme:'moor',laps:2,
     blurb:'Open country: over a highland moor, where the only walls are dry-stone ones. Take the arches in order and any line between them: through the gateways in the field walls, across the bog, through the ford in the loch below the castle, over the tor or between the pines of the plantation.',
     pts:olPlan(G,[[60],[80,100,80],[100,130,100],[110,140,110],[70,90,70],[90,120,90],[70]],[150,0]),
     open:{seed:41,route:0,hw:8,water:0,oob:260,drift:.5,gates:G,h,ry:y=>Math.max(y,1.6),
