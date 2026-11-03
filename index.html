@@ -904,9 +904,9 @@ class Vehicle{
     const ML=Math.min(mu*LAT,latCap*this.surface*(this.ice||1)*this.gripDmg),capF=Math.sqrt(Math.max(0,(ML*Fzf)**2-Fxf**2)),capR=Math.sqrt(Math.max(0,(ML*Fzr*rearL)**2-Fxr**2));
     const fall=al=>1-PHYS.fall*Math.min(1,Math.max(0,(Math.abs(al)-0.14)/0.5));
     const Fyf=-capF*Math.tanh(PHYS.slope*af)*fall(af),Fyr=-capR*Math.tanh(PHYS.slope*ar)*fall(ar);
-    const drag=0.5*RHO*c.cda*this.dragDmg*spd*(this.surface<1?2.2:1),roll=0.012*m*G*(this.surface<1?3:1);
+    const drag=0.5*RHO*c.cda*this.dragDmg*spd*(this.sDrag||(this.surface<1?2.2:1)),roll=0.012*m*G*(this.sRoll||(this.surface<1?3:1));
     const cd=Math.cos(delta),sd=Math.sin(delta);
-    const Fx=Fxf*cd-Fyf*sd*PHYS.scrub+Fxr-drag*u-roll*Math.tanh(u*3)-m*G*(this.slope||0);   // gravity along the slope: hills slow you, valleys pull you
+    const Fx=Fxf*cd-Fyf*sd*PHYS.scrub*Math.min(1,ua/4)+Fxr-drag*u-roll*Math.tanh(u*3)-m*G*(this.slope||0);   // gravity along the slope: hills slow you, valleys pull you
     const Fy=Fyf*cd+Fxf*sd+Fyr-drag*v;
     // stability reference: the steady-state yaw rate this steering angle asks for, capped by what grip can sustain
     const wSS=u*Math.tan(delta)/(wb*(1+u*u/PHYS.usK)),wLim=ML*G/Math.max(spd,3);const wRef=Math.sign(wSS)*Math.min(Math.abs(wSS),wLim);
@@ -3425,7 +3425,7 @@ function raceBonuses(g,v,dt){if(!g.started||g.done)return;const T=track;
   // drifting: rear slip angle times speed, banked when the slide ends cleanly
   const a=Math.abs(v.ar||0);
   if(a>.12&&v.u>10&&!v.scrape){g.dr=(g.dr||0)+a*v.u*dt*10;g.drT=0;}
-  else if(g.dr){g.drT=(g.drT||0)+dt;if(v.scrape||v.u<4){g.dr=0;toast('Drift lost');}else if(g.drT>.45){const p=g.dr;g.dr=0;if(p>40)award(Math.min(15000,Math.round(p*8/50)*50),`drift ${Math.round(p)} pts`);}}}
+  else if(g.dr){g.drT=(g.drT||0)+dt;if(v.scrape||v.u<4){g.dr=0;toast('Drift lost');}else if(g.drT>.45){const p=g.dr;g.dr=0;if(p>40)award(Math.min(15000,Math.round(p*8*(T.open?T.open.O.drift||.5:1)/50)*50),`drift ${Math.round(p)} pts`);}}}
 
 /* Rival bounties: six named drivers, each waiting at their home circuit in their own car.
    Beat one to unlock the next; a rematch pays a tenth of the bounty. All names invented. */
@@ -3854,7 +3854,7 @@ function renderRivals(){const el=$('#rivals');if(!el)return;el.hidden=state.mode
 function renderRaceInfo(best){const n=$('#raceName');if(!n)return;let name,blurb;renderRivals();renderWager();
   const pill=(k,v,cls)=>`<i class="${cls||''}"><small>${k}</small>${v}</i>`;let pay='';
   if(state.mode==='track'){const T=TRACKS.find(t=>t.id===state.track)||TRACKS[0];name=T.name;blurb=`${T.km?`${T.laps||3} laps of ${T.km.toFixed(1)} km (${(T.km*(T.laps||3)).toFixed(1)} km)`:`${T.laps||3} laps`}. ${T.blurb||''}`;
-    pay=['1st','2nd','3rd','4th'].map((p,i)=>pill(p,fmtMoney(placePay(T,i+1)),i?'':'top')).join('')+pill('New best lap','+'+fmtMoney(15000),'bonus')+pill('No wall contact','×2 total','bonus')+pill('Damage','−$14 per 1%','minus');
+    pay=['1st','2nd','3rd','4th'].map((p,i)=>pill(p,fmtMoney(placePay(T,i+1)),i?'':'top')).join('')+pill('New best lap','+'+fmtMoney(15000),'bonus')+pill(T.open?'Nothing hit':'No wall contact','×2 total','bonus')+pill('Damage','−$14 per 1%','minus');
     pay+=pill('Each lap you lead','+'+fmtMoney(lapLedPay(T)),'bonus')+pill('Each car you lap','+'+fmtMoney(LAP_BONUS),'bonus')+pill('Each overtake','+'+fmtMoney(Math.round(1500*rivalTier().mult)),'bonus')+pill('Drifts','≈$8 per point','bonus')+pill('Speed trap','$'+TRAP_RATE+' per mph over '+TRAP_FROM,'bonus')+pill(`Gold bulls ${[0,1,2,3,4].filter(b=>(career.tokens[T.id]||0)&(1<<b)).length}/5`,fmtMoney(tokenPay(T))+' each','bonus');
     {const MT=medalTimes(T),have=career.medals[T.id]||0;pay+=MEDALS.map(([m],i)=>pill(m+' lap '+fmtT(MT[m]),have>i?'✓ earned':'+'+fmtMoney(medalPay(T,m)),'medal '+m)).join('');}}
   else if(state.mode==='drag'){const D=dragDef();name=D.name;blurb=`${(D.d/1000).toFixed(2)} km. `+(D.blurb||`${Math.round(D.d)} m from a standing start against one rival.`);
@@ -14410,6 +14410,562 @@ AU_REGIONS.metro=[
  {n:'Lungofiume',look:AU_LK('hyper',{sky:[0x0a1638,0x1e3a7a,0x6a7ab8],fog:[0x1e2a4a,320,2300],sun:[0x8aa8ff,.8],hemi:[0x5a6aa0,0x1a1a24,.95],exposure:1.12,cloud:{star:.5}}),scene:'metro',city:'river',furn:'city',ground:'none',landY:MC.Y,hills:{k:'skyline',x:1760,h:1.2,lit:.45,win:'m'},towns:['LUNGOFIUME','PORTO','STADIO','LUNA PARK'],night:.75},
  {n:'Città vecchia',look:AU_LK('hyper',{sky:[0x03040a,0x0c1024,0x2a2030],fog:[0x16141e,260,1900],sun:[0x9aa8ff,.5],hemi:[0x3a4060,0x100c0a,.9],exposure:1.18,cloud:{star:.8}}),scene:'metro',city:'old',furn:'city',ground:'none',landY:MC.Y,hills:{k:'skyline',x:1760,h:.6,lit:.5,win:'o'},towns:['DUOMO','SAN LORENZO','PORTA ROMANA','NAVIGLI'],night:1},
  {n:'Porta Nuova',look:AU_LK('hyper',{fog:[0x0c0e1c,380,2700],hemi:[0x8a8070,0x0a0a0c,.75],exposure:1.1}),scene:'metro',city:'nuova',furn:'city',ground:'none',landY:MC.Y,hills:{k:'skyline',x:1760,h:2,lit:.4,win:'m',edge:[0xff4aa0,0x9ad0ff,0xffc870]},towns:['PORTA NUOVA','GARIBALDI','ISOLA','BICOCCA'],night:1}];
+/* ---- Open country (v176) ------------------------------------------------------------------------
+   Circuits laid across a whole patch of land instead of between walls. An open track is a TRACKS
+   entry with `open`: its route is the same closed spline as any circuit, graded into a heightfield
+   and marked with flags, but nothing keeps you on it. The checkpoint arches round the lap have to
+   be driven through in order; between them any line across the country counts - through sand,
+   grass, snow and shallow water, each with its own grip and drag, round the trees and rocks that
+   stop a car dead. The bots keep to the route, so a good shortcut is how a slower car wins. */
+const OL_K=[   // what the ground does to a car: grip (x the tyres'), rolling resistance and drag (x tarmac's)
+  {n:'Gravel',g:.8,r:1.8,d:1.1},{n:'Grass',g:.62,r:3.4,d:1.3},{n:'Soft sand',g:.56,r:5.5,d:1.5},{n:'Rock',g:.74,r:1.5,d:1.05},
+  {n:'Deep snow',g:.46,r:5,d:1.6},{n:'Ice',g:.3,r:.9,d:1},{n:'Mud',g:.48,r:6,d:1.4},{n:'Tarmac',g:1,r:1,d:1},
+  {n:'Packed snow',g:.55,r:1.6,d:1.05},{n:'Sand',g:.68,r:2.8,d:1.15},{n:'Tall grass',g:.58,r:4.2,d:1.5},{n:'Salt pan',g:.86,r:1.2,d:1},
+  {n:'Dirt',g:.76,r:2.1,d:1.12},{n:'Heather',g:.6,r:3.8,d:1.4}];
+const OL_LOOSE=[.7,.25,1,.15,.9,.3,.6,0,.8,.8,.3,.4,.75,.2];   // how much each kicks up behind the wheels
+const olHash=(i,j,s)=>{let h=(Math.imul(i|0,374761393)+Math.imul(j|0,668265263)+Math.imul(s|0,1442695041))|0;h=Math.imul(h^(h>>>13),1274126177);return ((h^(h>>>16))>>>0)/4294967296;};
+function olNoise(x,z,s){const i=Math.floor(x),j=Math.floor(z),u=x-i,v=z-j,a=olHash(i,j,s),b=olHash(i+1,j,s),c=olHash(i,j+1,s),d=olHash(i+1,j+1,s),su=u*u*(3-2*u),sv=v*v*(3-2*v);return a+(b-a)*su+(c-a)*sv+(a-b-c+d)*su*sv;}
+function olFbm(x,z,s,o){let t=0,a=.5,f=1,w=0;for(let k=0;k<(o||4);k++){t+=a*olNoise(x*f,z*f,s+k*31);w+=a;a*=.5;f*=2.03;}return t/w;}
+const olRnd=seed=>{let s=seed%2147483646+1;return ()=>(s=(s*16807)%2147483647)/2147483647;};
+const olSS=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
+let OLW=null;
+/* The land: heights on a 5 m grid, the route's distance and height splatted into it, the country graded
+   up to the piste over `blend` metres either side so it runs on embankments and through cuttings */
+function olWorld(def,G){const O=def.open,{pts,n}=G,cell=O.cell||5,hw=O.hw||8,bl=O.blend||24;
+  let a=1e9,b=-1e9,c=1e9,d=-1e9;pts.forEach(p=>{a=Math.min(a,p.x);b=Math.max(b,p.x);c=Math.min(c,p.z);d=Math.max(d,p.z);});
+  const M=O.margin||340,x0=Math.floor((a-M)/cell)*cell,z0=Math.floor((c-M)/cell)*cell,NX=Math.ceil((b+M-x0)/cell)+1,NZ=Math.ceil((d+M-z0)/cell)+1,NN=NX*NZ;
+  const H=new Float32Array(NN),D=new Float32Array(NN).fill(99),RY=new Float32Array(NN),K=new Uint8Array(NN);
+  for(let j=0,k=0;j<NZ;j++)for(let i=0;i<NX;i++,k++)H[k]=O.h(x0+i*cell,z0+j*cell);
+  /* the route's own profile: the land under it smoothed so the piste rolls rather than jolts, level at the start */
+  const hr=new Float64Array(n),sm=p=>{for(let q=0;q<p;q++){const s=hr.slice();for(let i=0;i<n;i++){let t=0;for(let k=-8;k<=8;k++)t+=s[(i+k+n)%n];hr[i]=t/17;}}};
+  for(let i=0;i<n;i++)hr[i]=O.h(pts[i].x,pts[i].z);sm(O.smooth||6);if(O.ry){for(let i=0;i<n;i++)hr[i]=O.ry(hr[i],pts[i].x,pts[i].z,i/n);sm(2);}
+  {const y0=hr[0];for(let k=-22;k<=12;k++){const i=(k+n)%n,w=Math.min(1,(k<0?22+k:12-k)/7);hr[i]=y0+(hr[i]-y0)*(1-w);}}
+  for(let i=0;i<n;i++)pts[i].y=hr[i];
+  const R=hw+bl+cell;
+  for(let i=0;i<n;i++){const p=pts[i],q=pts[(i+1)%n],sx=q.x-p.x,sz=q.z-p.z,L2=sx*sx+sz*sz||1,ya=hr[i],yb=hr[(i+1)%n];
+    const i0=Math.max(0,Math.floor((Math.min(p.x,q.x)-R-x0)/cell)),i1=Math.min(NX-1,Math.ceil((Math.max(p.x,q.x)+R-x0)/cell)),j0=Math.max(0,Math.floor((Math.min(p.z,q.z)-R-z0)/cell)),j1=Math.min(NZ-1,Math.ceil((Math.max(p.z,q.z)+R-z0)/cell));
+    for(let j=j0;j<=j1;j++)for(let ii=i0;ii<=i1;ii++){const x=x0+ii*cell,z=z0+j*cell;let t=((x-p.x)*sx+(z-p.z)*sz)/L2;t=t<0?0:t>1?1:t;const dx=x-p.x-sx*t,dz=z-p.z-sz*t,dd=Math.sqrt(dx*dx+dz*dz),k=j*NX+ii;if(dd<D[k]){D[k]=dd;RY[k]=ya+(yb-ya)*t;}}}
+  for(let k=0;k<NN;k++){const dd=D[k];if(dd>=hw+1+bl)continue;const w=dd<=hw+1?1:1-olSS(0,1,(dd-hw-1)/bl);H[k]+=(RY[k]-H[k])*w;}
+  const W={def,O,cell,hw,x0,z0,NX,NZ,H,D,K,route:O.route||0,water:O.water==null?null:O.water,span:hw+7,col:new Map(),q:1,pts,n,disp:[],
+    bx0:x0+3*cell,bx1:x0+(NX-4)*cell,bz0:z0+3*cell,bz1:z0+(NZ-4)*cell};OLW=W;
+  if(O.post)for(let j=0,k=0;j<NZ;j++)for(let i=0;i<NX;i++,k++)O.post(W,k,x0+i*cell,z0+j*cell,D[k]);
+  for(let j=0,k=0;j<NZ;j++)for(let i=0;i<NX;i++,k++){const sx=(H[j*NX+Math.min(NX-1,i+1)]-H[j*NX+Math.max(0,i-1)])/(2*cell),sz=(H[Math.min(NZ-1,j+1)*NX+i]-H[Math.max(0,j-1)*NX+i])/(2*cell);
+    K[k]=O.kind(x0+i*cell,z0+j*cell,H[k],D[k],Math.hypot(sx,sz));}
+  return W;}
+/* heights as the terrain mesh draws them: each grid square split corner to corner the same way */
+function olTri(A,x,z){const W=OLW,NX=W.NX,fx=(x-W.x0)/W.cell,fz=(z-W.z0)/W.cell;let i=Math.floor(fx),j=Math.floor(fz);i=i<0?0:i>NX-2?NX-2:i;j=j<0?0:j>W.NZ-2?W.NZ-2:j;
+  let u=fx-i,v=fz-j;u=u<0?0:u>1?1:u;v=v<0?0:v>1?1:v;const c=j*NX+i,a=A[c],b=A[c+1],e=A[c+NX],f=A[c+NX+1];return u+v<1?a+(b-a)*u+(e-a)*v:f+(e-f)*(1-u)+(b-f)*(1-v);}
+const olY=(x,z)=>olTri(OLW.H,x,z),olDist=(x,z)=>olTri(OLW.D,x,z);
+function olKind(x,z){const W=OLW;if(olDist(x,z)<W.hw)return W.route;const i=Math.round((x-W.x0)/W.cell),j=Math.round((z-W.z0)/W.cell);return W.K[Math.max(0,Math.min(W.NZ-1,j))*W.NX+Math.max(0,Math.min(W.NX-1,i))];}
+/* things a car hits: circles (t0), boxes (t1) and thick lines (t2) in 16 m buckets */
+const OL_CG=16,olCK=(a,b)=>(a+4096)*8192+(b+4096);
+function olCol(c){const W=OLW;let x0,z0,x1,z1;if(c.t===0){x0=c.x-c.r;x1=c.x+c.r;z0=c.z-c.r;z1=c.z+c.r;}else if(c.t===1){x0=c.x0;x1=c.x1;z0=c.z0;z1=c.z1;}
+  else{x0=Math.min(c.ax,c.bx)-c.r;x1=Math.max(c.ax,c.bx)+c.r;z0=Math.min(c.az,c.bz)-c.r;z1=Math.max(c.az,c.bz)+c.r;}c.q=0;
+  for(let a=Math.floor(x0/OL_CG);a<=Math.floor(x1/OL_CG);a++)for(let b=Math.floor(z0/OL_CG);b<=Math.floor(z1/OL_CG);b++){const k=olCK(a,b);let L=W.col.get(k);if(!L)W.col.set(k,L=[]);L.push(c);}}
+const OL_V=new THREE.Vector3();
+function olCollide(v,dt){const W=OLW,f=v.fwd,L=v.car.dims[0],Wd=v.car.dims[1],r=Wd*.48,h=L/2-Wd/2,y=v.y||0;W.q++;
+  for(const s of [1,0,-1]){let cx=v.x+f[0]*h*s,cz=v.z+f[1]*h*s;const a0=Math.floor((cx-r)/OL_CG),a1=Math.floor((cx+r)/OL_CG),b0=Math.floor((cz-r)/OL_CG),b1=Math.floor((cz+r)/OL_CG);
+    for(let a=a0;a<=a1;a++)for(let b=b0;b<=b1;b++){const Lc=W.col.get(olCK(a,b));if(!Lc)continue;for(let k=0;k<Lc.length;k++){const c=Lc[k],tag=W.q*4+s+1;if(c.q===tag)continue;c.q=tag;if(y+1.3<c.y0||y+.25>c.y1)continue;
+      let qx,qz,rr=r;if(c.t===0){qx=c.x;qz=c.z;rr=r+c.r;}else if(c.t===1){qx=Math.max(c.x0,Math.min(c.x1,cx));qz=Math.max(c.z0,Math.min(c.z1,cz));}
+      else{const sx=c.bx-c.ax,sz=c.bz-c.az;let t=((cx-c.ax)*sx+(cz-c.az)*sz)/(sx*sx+sz*sz||1);t=t<0?0:t>1?1:t;qx=c.ax+sx*t;qz=c.az+sz*t;rr=r+c.r;}
+      let dx=cx-qx,dz=cz-qz,d=Math.hypot(dx,dz);if(d>=rr)continue;
+      if(d<1e-4){if(c.t===1){const l=cx-c.x0,rt=c.x1-cx,bt=cz-c.z0,tp=c.z1-cz,m=Math.min(l,rt,bt,tp);dx=m===l?-1:m===rt?1:0;dz=m===bt?-1:m===tp?1:0;d=0;rr=r+m;}else{dx=-f[0];dz=-f[1];d=0;}}
+      const ll=Math.hypot(dx,dz)||1,nx=dx/ll,nz=dz/ll,pen=rr-d;v.x+=nx*pen;v.z+=nz*pen;cx+=nx*pen;cz+=nz*pen;
+      const vn=v.vx*nx+v.vz*nz;if(vn<0){impact(v,player.mesh,OL_V.set(cx-nx*r,y+.5,cz-nz*r),-vn);v.setVel(v.vx-vn*nx*1.25,v.vz-vn*nz*1.25);const sp=Math.hypot(v.vx,v.vz),fr=sp>.1?Math.max(0,1-3*dt/sp):1;v.setVel(v.vx*fr,v.vz*fr);v.w-=Math.min(-vn,8)*s*.04*Math.sign(nx*f[1]-nz*f[0]);}
+      v.scrape=true;}}}}
+/* driving on it: the free-roam model on this land - the ground's own grip and drag, air over a crest,
+   deep water and faces too steep to climb pushing back, then whatever stands in the way */
+function olPhys(v,dt){const W=OLW,px=v.x,pz=v.z,py=v.y,g0=olY(v.x,v.z),gap=v.y-g0;v.air=gap>.32;
+  if(!v.air){const f=v.fwd,yF=olY(v.x+f[0]*1.7,v.z+f[1]*1.7),yB=olY(v.x-f[0]*1.7,v.z-f[1]*1.7);v.slope=Math.max(-.9,Math.min(.9,(yF-yB)/3.4));
+    const k=olKind(v.x,v.z),K=OL_K[k],deep=W.water==null?-1:W.water-g0,wet=deep>.05?Math.min(1,deep/.7):0;
+    v.surface=(wet?Math.min(K.g,.5):K.g)*(gap>.06?.6:1);v.sDrag=K.d+wet*2.2;v.sRoll=K.r+wet*7;v.olK=wet?-1:k;v.step(dt);}
+  else{v.x+=v.vx*dt;v.z+=v.vz*dt;v.yaw+=v.w*dt;v.w*=1-dt*.8;v.wheelRot+=v.u*dt/.35;v.gearStep(dt);const sp=Math.hypot(v.u,v.v),k=1-.5*RHO*v.car.cda*sp*dt/v.car.kg;v.u*=k;v.v*=k;}
+  const g1=olY(v.x,v.z),moved=Math.hypot(v.x-px,v.z-pz);let blocked=0;
+  if(W.water!=null&&W.water-g1>.9)blocked=1;else if(g1-py>.6&&g1-py>1.25*moved+.4)blocked=2;if(v.x<W.bx0||v.x>W.bx1||v.z<W.bz0||v.z>W.bz1)blocked=3;
+  if(blocked){let nx,nz;if(blocked===3){nx=v.x<W.bx0?1:v.x>W.bx1?-1:0;nz=v.z<W.bz0?1:v.z>W.bz1?-1:0;}
+    else{const sx=(olY(v.x+1.5,v.z)-olY(v.x-1.5,v.z))/3,sz=(olY(v.x,v.z+1.5)-olY(v.x,v.z-1.5))/3;nx=blocked===1?sx:-sx;nz=blocked===1?sz:-sz;}
+    let l=Math.hypot(nx,nz);if(l<1e-4){nx=px-v.x;nz=pz-v.z;l=Math.hypot(nx,nz)||1;}nx/=l;nz/=l;v.x=px;v.z=pz;const vn=v.vx*nx+v.vz*nz;
+    if(vn<0){if(blocked===2)impact(v,player.mesh,OL_V.set(v.x-nx*2,v.y+.5,v.z-nz*2),-vn);v.setVel(v.vx-vn*nx*1.3,v.vz-vn*nz*1.3);}v.scrape=true;}
+  olCollide(v,dt);
+  const gy=olY(v.x,v.z);v.vy-=G*dt;let ny=v.y+v.vy*dt;
+  if(ny<=gy){const vin=v.vy,land=v.air&&vin<-7;ny=gy;v.vy=Math.max(-25,Math.min(9,v.u*v.slope));   // the suspension soaks up the rest: a crest gives a hop, not a launch
+    if(land){game.landT=game.t;if(state.damage&&vin<-14)v.hit('front',(-vin-14)*1.2);}}
+  if(ny<gy-.5)ny=gy;v.y=ny;v.hy=v.y;}
+function olStep(v,g,dt,sub){v.scrape=false;for(let i=0;i<sub;i++)olPhys(v,dt/sub);g.offRoad=false;}
+/* The lap: through every arch in order. Crossing any arch further on first is a missed checkpoint, and the
+   lap only counts once you go back for it. Your place is your progress along the route between the last
+   arch and the next, so the order stays right however far off the route you are. */
+function olLaps(g,v,dt){const W=track.open,{pts,tan,right,n}=track,Gs=W.gates,K=Gs.length;
+  if(!g.ol)g.ol={next:0,ps:new Float32Array(K).fill(NaN),miss:-1,oob:0,oobT:0,far:0};const S=g.ol;
+  for(let k=0;k<K;k++){const gi=Gs[k],p=pts[gi],t=tan[gi],r=right[gi],dx=v.x-p.x,dz=v.z-p.z,s=dx*t.x+dz*t.z,l=dx*r.x+dz*r.z,prev=S.ps[k];S.ps[k]=s;
+    if(!(prev<0&&s>=0)||Math.abs(l)>W.span||Math.abs(v.y-p.y)>9||!g.started||g.done)continue;
+    if(k===S.next)olGate(g,k);else if(S.next>0&&(k===0||k>S.next)&&S.miss!==S.next){S.miss=S.next;frBanner('Missed checkpoint '+S.next,'Go back through it');}}
+  {const a=S.next===0?(g.crossed?Gs[K-1]:n-90):Gs[S.next-1],b=S.next===0?n-1:Gs[S.next];let best=a%n,bd=1e18;
+    for(let i=a;i<=b;i++){const q=pts[i%n],dx=q.x-v.x,dz=q.z-v.z,d=dx*dx+dz*dz;if(d<bd){bd=d;best=i%n;}}g.idx=best;}
+  S.oobT-=dt;if(S.oobT<=0){S.oobT=.25;let bd=1e18;for(let i=0;i<n;i+=2){const q=pts[i],dx=q.x-v.x,dz=q.z-v.z,d=dx*dx+dz*dz;if(d<bd)bd=d;}S.far=Math.sqrt(bd);}
+  if(S.far>W.oob&&g.started&&!g.done&&!v.wrecked){S.oob+=dt;if(S.oob>5){S.oob=0;resetCar();}}else S.oob=0;}
+function olGate(g,k){const S=g.ol,W=track.open,K=W.gates.length;S.miss=-1;
+  if(k===0){if(!g.crossed){g.crossed=true;if(g.t-g.lapStart<8)g.lapStart=g.t;S.next=1;olMark(1);return;}
+    const lt=g.t-g.lapStart;g.lapTimes.push(lt);if(!g.best||lt<g.best){g.best=lt;g.newBest=true;store.set(bestKey(),lt);}checkMedal(track.def,lt);if(g.pos===1)award(lapLedPay(track.def),'lap led');
+    g.lap++;g.lapStart=g.t;S.next=1;olMark(1);if(g.lap>g.laps&&!g.done){g.done=true;finishTrack();}return;}
+  S.next=(k+1)%K;olMark(S.next);frBanner(`Checkpoint ${k} of ${K-1}`,fmtT(g.t-g.lapStart));}
+function olMark(k){const W=track.open;W.arches.forEach((a,i)=>{a.userData.mat.emissiveIntensity=i===k?.45:.06;});const p=track.pts[W.gates[k]];W.beacon.position.set(p.x,p.y+60,p.z);}
+/* ---- building it ---- */
+function olBuild(def){applyTheme(def.theme);const O=def.open,G=trackGeom(def),{pts,tan,right,kappa,n,len,ds}=G,t0=performance.now();
+  const W=olWorld(def,G),grade=new Float32Array(n);for(let i=0;i<n;i++)grade[i]=(pts[(i+1)%n].y-pts[(i-1+n)%n].y)/(2*ds);
+  terrainY=olY;W.oob=O.oob||240;W.gates=[0];   // arches by position: each the route sample nearest it, in order round the lap
+  O.gates.slice(1).forEach(q=>{const a=W.gates[W.gates.length-1]+10;let best=a,bd=1e18;for(let i=a;i<n-10;i++){const d=(pts[i].x-q[0])**2+(pts[i].z-q[1])**2;if(d<bd){bd=d;best=i;}}W.gates.push(best);});
+  const grp=new THREE.Group();world.add(grp);W.grp=grp;
+  olTerrain(W,grp);olFar(W,grp);if(W.water!=null)olWater(W,grp);olRibbon(W,G,grp);olMarks(W,G,grp);olGates(W,G,grp);
+  const R=olRnd(O.seed||7);olScatter(W,grp,O.scatter||[],R);if(O.extra)O.extra(W,G,grp,R);
+  const trap=addSpeedTrap(pts,right,tan,n,kappa),tp=trap.flash.parent;tp.position.y=olY(tp.position.x,tp.position.z);
+  const tokens=olBulls(def,W);olDust(W);
+  def.km=len/1000;track={pts,tan,right,kappa,n,len,ds,curve:G.curve,def,grade,trap,tokens,open:W};
+  ambient.push(()=>olLod(W));console.log('open country built in',Math.round(performance.now()-t0),'ms');renderTracks&&renderTracks();}
+function olTerrain(W,grp){const {NX,NZ,H,D,K,cell,x0,z0,O,hw}=W,NN=NX*NZ,nor=new Float32Array(NN*3),col=new Float32Array(NN*3),c=new THREE.Color(),rc=new THREE.Color();
+  for(let j=0,k=0;j<NZ;j++)for(let i=0;i<NX;i++,k++){const sx=(H[j*NX+(i?i-1:i)]-H[j*NX+(i<NX-1?i+1:i)])/(2*cell),sz=(H[(j?j-1:j)*NX+i]-H[(j<NZ-1?j+1:j)*NX+i])/(2*cell),l=Math.hypot(sx,1,sz);
+    nor[k*3]=sx/l;nor[k*3+1]=1/l;nor[k*3+2]=sz/l;const x=x0+i*cell,z=z0+j*cell;O.col(c,K[k],H[k],x,z,Math.hypot(sx,sz),D[k]);
+    const t=olSS(hw+3,hw-1.5,D[k]);if(t>0){O.rcol(rc,x,z);c.lerp(rc,t);}c.convertSRGBToLinear();col[k*3]=c.r;col[k*3+1]=c.g;col[k*3+2]=c.b;}
+  const mat=frGroundMat(),CH=32;W.chunks=[];
+  for(let cj=0;cj<NZ-1;cj+=CH)for(let ci=0;ci<NX-1;ci+=CH){const w=Math.min(CH,NX-1-ci),h=Math.min(CH,NZ-1-cj),L=[1,4].map(st=>{const g=olChunk(W,ci,cj,w,h,st,nor,col),m=new THREE.Mesh(g,mat);m.receiveShadow=true;grp.add(m);W.disp.push(g);return m;});
+    W.chunks.push({f:L[0],c:L[1],x:x0+(ci+w/2)*cell,z:z0+(cj+h/2)*cell});}
+  olLod(W);}
+function olChunk(W,ci,cj,w,h,st,nor,col){const {NX,H,cell,x0,z0}=W,xs=[],zs=[];for(let i=0;i<w;i+=st)xs.push(i);xs.push(w);for(let j=0;j<h;j+=st)zs.push(j);zs.push(h);
+  const P=[],N=[],C=[],U=[],I=[],nx=xs.length,put=(i,j,dy)=>{const k=(cj+j)*NX+ci+i,x=x0+(ci+i)*cell,z=z0+(cj+j)*cell;P.push(x,H[k]+dy,z);N.push(nor[k*3],nor[k*3+1],nor[k*3+2]);C.push(col[k*3],col[k*3+1],col[k*3+2]);U.push(x/9,z/9);return P.length/3-1;};
+  zs.forEach(j=>xs.forEach(i=>put(i,j,0)));
+  for(let b=0;b<zs.length-1;b++)for(let a=0;a<nx-1;a++){const p=b*nx+a,q=p+1,r=p+nx,s=r+1;I.push(p,r,q,q,r,s);}
+  /* an apron under every edge hides the cracks where a near chunk meets a far, coarser one */
+  const edge=L=>{for(let e=0;e<L.length-1;e++){const a=put(L[e][0],L[e][1],0),b=put(L[e+1][0],L[e+1][1],0),c=put(L[e][0],L[e][1],-2.5),d=put(L[e+1][0],L[e+1][1],-2.5);I.push(a,c,b,b,c,d,a,b,c,b,d,c);}};
+  edge(xs.map(i=>[i,0]));edge(xs.map(i=>[i,h]));edge(zs.map(j=>[0,j]));edge(zs.map(j=>[w,j]));
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(N,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));
+  g.setAttribute('uv',new THREE.Float32BufferAttribute(U,2));g.setIndex(I);g.computeBoundingSphere();return g;}
+function olLod(W){const cx=camera.position.x,cz=camera.position.z,far=(scene.fog?scene.fog.far:2200)+500;W.chunks.forEach(ch=>{const d=Math.hypot(ch.x-cx,ch.z-cz),near=d<560;ch.f.visible=near;ch.c.visible=!near&&d<far;});}
+/* the country beyond the patch, coarse, out to the haze: the same land, rising into whatever rims it */
+function olFar(W,grp){const O=W.O,S=80,E=O.farExt||3400,X1p=W.x0+(W.NX-1)*W.cell,Z1p=W.z0+(W.NZ-1)*W.cell,X0=W.x0-E,Z0=W.z0-E,nx=Math.ceil((X1p+E-X0)/S)+1,nz=Math.ceil((Z1p+E-Z0)/S)+1;
+  const P=[],C=[],U=[],I=[],c=new THREE.Color();
+  for(let j=0;j<nz;j++)for(let i=0;i<nx;i++){const x=X0+i*S,z=Z0+j*S,out=Math.max(W.x0-x,x-X1p,W.z0-z,z-Z1p,0);let y=O.h(x,z)+(O.rise?O.rise(x,z,out):0);if(!out)y-=3;
+    P.push(x,y,z);O.col(c,O.kind(x,z,y,99,.1),y,x,z,.1,99);c.convertSRGBToLinear();C.push(c.r,c.g,c.b);U.push(x/9,z/9);}
+  for(let j=0;j<nz-1;j++)for(let i=0;i<nx-1;i++){const x=X0+i*S,z=Z0+j*S;if(x>=W.x0+S&&x+S<=X1p-S&&z>=W.z0+S&&z+S<=Z1p-S)continue;const p=j*nx+i,q=p+1,r=p+nx,s=r+1;I.push(p,r,q,q,r,s);}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(U,2));g.setIndex(I);g.computeVertexNormals();
+  grp.add(new THREE.Mesh(g,frGroundMat()));W.disp.push(g);}
+const olWaterTex=()=>tdTex('olwater',()=>{const S=256,h=new Float32Array(S*S);for(let y=0;y<S;y++)for(let x=0;x<S;x++)h[y*S+x]=olFbm(x/32,y/32,77,4)*.7+olFbm(x/9,y/9,78,2)*.3;
+  return canvasTex(S,S,(c,w)=>{const img=c.createImageData(S,S),d=img.data;for(let y=0;y<S;y++)for(let x=0;x<S;x++){const hx=h[y*S+(x+1)%S]-h[y*S+(x+S-1)%S],hy=h[((y+1)%S)*S+x]-h[((y+S-1)%S)*S+x],l=Math.hypot(hx*6,hy*6,1),o=(y*S+x)*4;
+    d[o]=128+127*(-hx*6/l);d[o+1]=128+127*(-hy*6/l);d[o+2]=128+127/l;d[o+3]=255;}c.putImageData(img,0,0);},1,1,true);});
+function olWater(W,grp){const O=W.O,E=O.farExt||3400,sx=(W.NX-1)*W.cell+2*E,sz=(W.NZ-1)*W.cell+2*E,m=new THREE.MeshStandardMaterial({color:O.waterCol||0x2a6a8a,roughness:.07,metalness:.15,transparent:true,opacity:O.waterOp||.8,depthWrite:false,
+    normalMap:olWaterTex().clone(),normalScale:new THREE.Vector2(.35,.35)});m.normalMap.needsUpdate=true;m.normalMap.repeat.set(sx/26,sz/26);
+  const geo=new THREE.PlaneGeometry(sx,sz),p=new THREE.Mesh(geo,m);p.rotation.x=-Math.PI/2;p.position.set(W.x0+(W.NX-1)*W.cell/2,W.water,W.z0+(W.NZ-1)*W.cell/2);p.renderOrder=1;grp.add(p);W.disp.push(geo);
+  ambient.push(dt=>{m.normalMap.offset.x+=dt*.004;m.normalMap.offset.y+=dt*.0025;});}
+/* the piste: ruts and grit laid over the land's own colour, fading out at its edges */
+function olRibTex(s){s=s||{};return tdTex('olrib'+JSON.stringify(s),()=>canvasTex(256,512,(c,w,h)=>{c.clearRect(0,0,w,h);
+  for(let i=0;i<5200;i++){c.fillStyle=i%2?(s.a||'rgba(70,50,30,.32)'):(s.b||'rgba(230,210,180,.28)');c.fillRect(Math.random()*w,Math.random()*h,1+Math.random()*2.5,1+Math.random()*2.5);}
+  (s.ruts||[.34,.43,.57,.66]).forEach((u,k)=>{c.fillStyle=s.rut||'rgba(55,38,24,.24)';for(let y=0;y<h;y+=2){const x=u*w+Math.sin(y/h*Math.PI*4+k*2.1)*3;c.fillRect(x-6,y,12,2);}});
+  const img=c.getImageData(0,0,w,h),D=img.data;for(let x=0;x<w;x++){const u=x/(w-1),a=Math.min(1,Math.min(u,1-u)/.16);for(let y=0;y<h;y++)D[(y*w+x)*4+3]*=a;}c.putImageData(img,0,0);},1,1));}
+function olRibbon(W,G,grp){const {pts,right,n}=G,hw=W.hw+2.5,cols=[-1,-.55,-.2,.2,.55,1],m=cols.length,P=[],U=[],I=[];let d=0;
+  for(let i=0;i<=n;i++){const p=pts[i%n],r=right[i%n];if(i)d+=Math.hypot(p.x-pts[i-1].x,p.z-pts[i-1].z);cols.forEach(f=>{const x=p.x+r.x*f*hw,z=p.z+r.z*f*hw;P.push(x,olY(x,z)+.06,z);U.push((f+1)/2,d/26);});}
+  for(let i=0;i<n;i++)for(let k=0;k<m-1;k++){const a=i*m+k,b=a+m;I.push(a,b,a+1,a+1,b,b+1);}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(U,2));g.setIndex(I);g.computeVertexNormals();
+  const mesh=new THREE.Mesh(g,new THREE.MeshStandardMaterial({map:olRibTex(W.O.rib),transparent:true,depthWrite:false,roughness:.95,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));mesh.receiveShadow=true;grp.add(mesh);W.disp.push(g);}
+/* the route's markers either side, and a board on the outside of every tight corner */
+function olMarks(W,G,grp){const M=W.O.marks||{},{pts,right,tan,n,ds}=G,P=OL_P[M.p||'flag'](M.v),L=[],step=Math.max(1,Math.round((M.every||30)/ds)),cols=M.cols||[0xff5a1a,0xf4f2ec];let k=0;
+  for(let i=0;i<n;i+=step,k++)for(const sd of (M.both===false?[k%2?1:-1]:[-1,1])){const off=sd*(W.hw+(M.off||1.4)),x=pts[i].x+right[i].x*off,z=pts[i].z+right[i].z*off,s=(M.s||1)*(.9+olHash(i,sd,3)*.2);
+    L.push([x,olY(x,z),z,Math.atan2(tan[i].x,tan[i].z)+(sd<0?Math.PI:0),s,s,s,olLin(cols[(k+(sd>0?1:0))%cols.length])]);}
+  W.disp.push(fxI(grp,P.geo,olIC(P.mat,true),L,false));
+  const C=olChevron(),B=[],Q=[],ang=i=>Math.atan2(tan[(i+n)%n].x,tan[(i+n)%n].z);let last=-1e9;
+  for(let i=0;i<n;i++){const turn=(a=>{while(a>Math.PI)a-=2*Math.PI;while(a<-Math.PI)a+=2*Math.PI;return a;})(ang(i+8)-ang(i-8)),k1=Math.abs(turn)/(16*ds);if(k1<1/85||i-last<70/ds)continue;
+    let pk=i;for(let j=i;j<i+30&&j<n;j++){const t2=Math.abs((a=>{while(a>Math.PI)a-=2*Math.PI;while(a<-Math.PI)a+=2*Math.PI;return a;})(ang(j+8)-ang(j-8)));if(t2>Math.abs(turn))pk=j;}
+    last=pk;const t1=tan[(pk-8+n)%n],t2=tan[(pk+8)%n],cr=t1.x*t2.z-t1.z*t2.x,sd=cr<0?-1:1,j=(pk-4+n)%n,off=sd*(W.hw+5),x=pts[j].x+right[j].x*off,z=pts[j].z+right[j].z*off,y=olY(x,z),ry=Math.atan2(tan[j].x,tan[j].z)+Math.PI;
+    B.push([x,y,z,ry,cr<0?-1:1,1,1]);Q.push([x,y,z,ry]);}
+  W.disp.push(fxI(grp,C.board,C.bmat,B,false),fxI(grp,C.geo,olMat('flat'),Q,false));}
+function olGates(W,G,grp){const {pts,tan}=G,col=W.O.gateCol||0xff6a13;
+  W.arches=W.gates.map((gi,k)=>{const a=olArch(W.hw+3,k?col:0xf4f2ec,k?'CHECKPOINT '+k:'START · FINISH',!k),p=pts[gi];a.position.set(p.x,p.y-.3,p.z);a.rotation.y=Math.atan2(tan[gi].x,tan[gi].z);grp.add(a);return a;});
+  const bm=new THREE.MeshBasicMaterial({color:W.O.beam||0xffd860,transparent:true,opacity:.12,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});W.beacon=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.1,120,14,1,true),bm);grp.add(W.beacon);
+  let t=0;ambient.push(dt=>{t+=dt;bm.opacity=.1+.06*Math.sin(t*3);});
+  const sl=new THREE.Mesh(new THREE.PlaneGeometry(W.hw*2,1.6),new THREE.MeshStandardMaterial({map:detailTex('checker'),roughness:.6,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3}));
+  sl.rotation.x=-Math.PI/2;sl.rotation.z=-Math.atan2(tan[0].x,tan[0].z);sl.position.set(pts[0].x,pts[0].y+.08,pts[0].z);grp.add(sl);}
+/* everything scattered over the land: S.n of prop S.p, kept S.clear off the route, where S.where says;
+   solid ones always in full (they decide which shortcuts are safe), the rest thinned on lower settings */
+function olScatter(W,grp,list,R){const X=(W.NX-1)*W.cell,Z=(W.NZ-1)*W.cell;
+  list.forEach(S=>{const P=OL_P[S.p](S.v),solid=P.r>0&&!S.soft,n=Math.round(S.n*(solid?1:tdDensity())),out=[],cl=(S.clear!=null?S.clear:3)+W.hw;let tries=0;
+    while(out.length<n&&tries<n*40){tries++;let x,z;if(S.near){const c=S.near[(R()*S.near.length)|0],a=R()*6.283,r=Math.sqrt(R())*c[2];x=c[0]+Math.cos(a)*r;z=c[1]+Math.sin(a)*r;}else{x=W.x0+R()*X;z=W.z0+R()*Z;}
+      const sc=S.s[0]+R()*(S.s[1]-S.s[0]);if(olDist(x,z)<cl+P.r*sc)continue;const y=olY(x,z),k=olKind(x,z);if(S.where&&!S.where(x,z,y,k))continue;if(W.water!=null&&!S.wet&&y<W.water+.2)continue;
+      out.push([x,y-(S.sink||0)*sc,z,R()*6.283,sc*(S.sx||1),sc*(S.sy||1),sc*(S.sx||1),S.c?olLin(S.c(R,x,z)):null]);if(solid)olCol({t:0,x,z,r:P.r*sc,y0:y-1,y1:y+P.h*sc});}
+    W.disp.push(fxI(grp,P.geo,olIC(P.mat,!!S.c),out,!!S.shadow));});}
+/* r128 keeps the program a material was first compiled with, so instances with their own colours need a material of their own */
+const olIC=(m,ic)=>ic?(m._ic||(m._ic=m.clone())):m;
+/* fxI takes its colours as they come, so the hex values here (picked as sRGB, like the land's) are made linear first */
+const olLin=h=>new THREE.Color(h).convertSRGBToLinear();
+const OL_HAZE=new THREE.Color(0xf2ece2);   // what dust thrown into the air is lightened toward
+function olBulls(def,W){const have=career.tokens[def.id]||0,list=[],face=new THREE.MeshStandardMaterial({map:bullTex(),metalness:.8,roughness:.25,emissive:0xffc040,emissiveIntensity:.35}),
+  rim=new THREE.MeshStandardMaterial({color:0xd8a020,metalness:1,roughness:.2,emissive:0x5a3a00}),glow=new THREE.MeshBasicMaterial({color:0xffc84a,transparent:true,opacity:.16,blending:THREE.AdditiveBlending,depthWrite:false});
+  (def.open.bulls||[]).slice(0,5).forEach(([x,z],k)=>{if(have&(1<<k)){list.push(null);return;}const g=new THREE.Group(),coin=new THREE.Mesh(new THREE.CylinderGeometry(.9,.9,.16,28),[rim,face,face]);coin.rotation.x=Math.PI/2;
+    g.add(coin,new THREE.Mesh(new THREE.SphereGeometry(1.25,12,8),glow));g.position.set(x,olY(x,z)+1.4,z);world.add(g);list.push(g);});
+  ambient.push(dt=>list.forEach(g=>{if(g&&g.visible)g.rotation.y+=dt*2.4;}));return list;}
+/* what the wheels throw up: dust, sand, snow, spray */
+function olDust(W){const N=260,pos=new Float32Array(N*3),cl=new Float32Array(N*3),al=new Float32Array(N),sz=new Float32Array(N),g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('cl',new THREE.BufferAttribute(cl,3));g.setAttribute('al',new THREE.BufferAttribute(al,1));g.setAttribute('sz',new THREE.BufferAttribute(sz,1));
+  const m=new THREE.ShaderMaterial({uniforms:{k:{value:500}},transparent:true,depthWrite:false,
+    vertexShader:'attribute vec3 cl;attribute float al;attribute float sz;varying vec3 vc;varying float va;uniform float k;void main(){vc=cl;va=al;vec4 mv=modelViewMatrix*vec4(position,1.);gl_PointSize=sz*k/max(1.,-mv.z);gl_Position=projectionMatrix*mv;}',
+    fragmentShader:'varying vec3 vc;varying float va;void main(){vec2 c=gl_PointCoord-.5;float d=dot(c,c)*4.;if(d>1.)discard;gl_FragColor=vec4(vc,va*(1.-d)*(1.-d));}'});
+  const pts=new THREE.Points(g,m);pts.frustumCulled=false;W.grp.add(pts);W.disp.push(g);const P=[];for(let i=0;i<N;i++)P.push({life:0,age:0,x:0,y:0,z:0,vx:0,vy:0,vz:0,c:[1,1,1]});let emit=0,next=0;const c=new THREE.Color();
+  W.dust={tick(dt,v){m.uniforms.k.value=renderer.domElement.height/(2*Math.tan(camera.fov*Math.PI/360));const sp=Math.hypot(v.vx,v.vz),k=v.olK,loose=v.air?0:k===-1?1.4:k==null?0:OL_LOOSE[k];
+    emit+=dt*Math.min(90,sp*2.6)*loose*(sp>4?1:0);const f=v.fwd,l=v.left,L=v.car.dims[0]*.42,Wd=v.car.dims[1]*.45;
+    /* the points are drawn unlit straight to the screen, so the colour stays as picked (sRGB); dust in the air reads
+       paler than the ground it came off, and in the ground's own colour the cloud vanished against it */
+    if(emit>=1){const dc=k===-1?(W.O.spray||0xe8f2f4):(W.O.dust&&W.O.dust[k])||W.O.dustCol||0xc8a878;c.set(dc);if(k!==-1)c.lerp(OL_HAZE,.4);}
+    /* thrown out sideways from each rear wheel as well as up, so the cloud shows either side of the car from the chase camera;
+       the car's wake carries it along at first, or it is already behind the camera by the time it shows */
+    while(emit>=1){emit--;const p=P[next];next=(next+1)%N;const sd=next%2?1:-1,o=1.5+Math.random()*3;p.x=v.x-f[0]*L+l[0]*Wd*sd;p.z=v.z-f[1]*L+l[1]*Wd*sd;p.y=(v.y||0)+.25;
+      p.vx=v.vx*.72+l[0]*sd*o+(Math.random()-.5)*2;p.vz=v.vz*.72+l[1]*sd*o+(Math.random()-.5)*2;p.vy=1+Math.random()*2+(k===-1?2:0);
+      p.age=0;p.life=1.4+Math.random()*1.4;p.c=[c.r,c.g,c.b];p.s0=k===-1?.8:1.6;}
+    for(let i=0;i<N;i++){const p=P[i];if(p.age<p.life){p.age+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.z+=p.vz*dt;p.vx*=1-dt*1.5;p.vz*=1-dt*1.5;p.vy=p.vy*(1-dt*2)-(k===-1?4:0)*dt;}
+      const t=p.age/p.life,on=p.age<p.life;pos[i*3]=p.x;pos[i*3+1]=p.y;pos[i*3+2]=p.z;cl[i*3]=p.c[0];cl[i*3+1]=p.c[1];cl[i*3+2]=p.c[2];al[i]=on?.7*(1-t)*Math.min(1,p.age*25):0;sz[i]=(p.s0||1)*(1+t*4);}
+    g.attributes.position.needsUpdate=g.attributes.cl.needsUpdate=g.attributes.al.needsUpdate=g.attributes.sz.needsUpdate=true;}};}
+/* after the race step: the car's pitch and roll on the land, the camera kept out of the ground, the dust */
+function olAfter(dt){const v=player.veh,m=player.mesh,g=game;if(!v||!m)return;
+  const tp=v.air?-Math.atan2(v.vy,Math.max(4,Math.abs(v.u)))*.6:-Math.atan(v.slope||0);g.olP=g.olP==null?tp:g.olP+(tp-g.olP)*Math.min(1,dt*(v.air?3:14));m.rotation.x=g.olP;
+  let roll=0;if(!v.air){const l=v.left,yl=olY(v.x+l[0]*.9,v.z+l[1]*.9),yr=olY(v.x-l[0]*.9,v.z-l[1]*.9);roll=Math.max(-.5,Math.min(.5,Math.atan((yl-yr)/1.8)));}
+  g.olR=(g.olR||0)+(roll-(g.olR||0))*Math.min(1,dt*10);m.rotation.z=g.olR;
+  const cp=camera.position,gy=olY(cp.x,cp.z);if(cp.y<gy+.8){cp.y=gy+.8;camera.lookAt(v.x,v.hy+.9,v.z);}
+  if(g.landT&&g.t-g.landT<.25)cp.y+=(Math.random()-.5)*.12*(1-(g.t-g.landT)/.25);
+  if(track.open.dust)track.open.dust.tick(dt,v);}
+function olStart(){const v=player.veh,W=track.open;v.y=olY(v.x,v.z);v.hy=v.y;v.vy=0;v.air=false;v.slope=0;
+  ai.forEach(r=>{if(r.f!=null){r.f*=OL_K[W.route].g*(W.O.aiK||1);r.prof=r.profC=null;}});olMark(0);}
+function olMap(){const c=mapCtx,S=340,{pts,n,right}=track,W=track.open;c.clearRect(0,0,S,S);let a=1e9,b=-1e9,e=1e9,f=-1e9;pts.forEach(p=>{a=Math.min(a,p.x);b=Math.max(b,p.x);e=Math.min(e,p.z);f=Math.max(f,p.z);});
+  const s=(S-40)/Math.max(b-a,f-e),ox=20+((S-40)-(b-a)*s)/2,oz=20+((S-40)-(f-e)*s)/2,X=x=>ox+(b-x)*s,Z=z=>oz+(f-z)*s;
+  c.beginPath();for(let i=0;i<n;i+=4){const p=pts[i];i?c.lineTo(X(p.x),Z(p.z)):c.moveTo(X(p.x),Z(p.z));}c.closePath();c.strokeStyle='rgba(150,140,120,.5)';c.lineWidth=6;c.setLineDash([9,7]);c.stroke();c.setLineDash([]);
+  const nx=game&&game.ol?game.ol.next:0;W.gates.forEach((gi,k)=>{const p=pts[gi],r=right[gi];c.beginPath();c.moveTo(X(p.x+r.x*16),Z(p.z+r.z*16));c.lineTo(X(p.x-r.x*16),Z(p.z-r.z*16));
+    c.strokeStyle=k===nx?'#FFC61A':k?'rgba(238,234,224,.6)':'#EEEAE0';c.lineWidth=k===nx?7:4;c.stroke();});
+  ai.forEach(r=>{c.beginPath();c.arc(X(r.mesh.position.x),Z(r.mesh.position.z),6,0,7);c.fillStyle='#9aa0aa';c.fill();});
+  const v=player.veh;c.beginPath();c.arc(Math.max(6,Math.min(S-6,X(v.x))),Math.max(6,Math.min(S-6,Z(v.z))),8,0,7);c.fillStyle='#FF6A13';c.fill();}
+/* ---- hooks into the circuit race ---- */
+{const bt=buildTrack;buildTrack=function(def){if(def&&def.open)return olBuild(def);return bt.apply(this,arguments);};}
+{const cw=clearWorld;clearWorld=function(){if(OLW){OLW.disp.forEach(x=>{try{x&&x.dispose&&x.dispose();}catch(e){}});OLW=null;}return cw.apply(this,arguments);};}
+{const sr=startRace;startRace=function(){const r=sr.apply(this,arguments);if(game&&game.mode==='track'&&track&&track.open)olStart();return r;};}
+{const ur=updateRace;updateRace=function(dt){const r=ur.apply(this,arguments);if(game&&game.mode==='track'&&track&&track.open)olAfter(dt);return r;};}
+{const rc=resetCar;resetCar=function(){const r=rc.apply(this,arguments);if(game&&game.mode==='track'&&track&&track.open){const v=player.veh;v.y=olY(v.x,v.z);v.hy=v.y;v.vy=0;v.air=false;v.slope=0;if(game.ol){game.ol.oob=0;game.ol.ps.fill(NaN);}}return r;};}
+{const dm=drawMap;drawMap=function(){if(track&&track.open)return olMap();return dm.apply(this,arguments);};}
+{const uh=updateHUD;updateHUD=function(){const r=uh.apply(this,arguments),g=game;if(!g||g.mode!=='track'||!track||!track.open||!g.ol)return r;const v=player.veh,S=g.ol,W=track.open,K=W.gates.length;
+  const st=$('#status');if(!v.wrecked){const t=S.oob>0?`Out of bounds · back on the route in ${Math.ceil(5-S.oob)}`:S.miss>=0?`Missed checkpoint ${S.miss} · go back through it`:v.air?'Airborne':v.olK===-1?'In the water':v.scrape?'Contact':
+    v.olK!=null&&v.olK!==W.route&&v.mph>6?OL_K[v.olK].n:'';st.textContent=t;st.classList.toggle('on',!!t);}
+  const p=track.pts[W.gates[S.next]];$('#side').insertAdjacentHTML('afterbegin',`<div class="row"><span class="label">${S.next?`Checkpoint ${S.next}/${K-1}`:g.crossed?'Finish':'Start'}</span><b class="acc">${Math.round(Math.hypot(p.x-v.x,p.z-v.z))} m</b></div>`);return r;};}
+{const mt=medalTimes;medalTimes=function(def){if(!def||!def.open||MEDAL_T[def.id])return mt.apply(this,arguments);const saved=track;
+  if(!(track&&track.def===def)){const G=trackGeom(def);track={pts:G.pts,tan:G.tan,right:G.right,kappa:G.kappa,n:G.n,len:G.len,ds:G.ds,grade:G.grade,def};}
+  const ref=CARS.find(c=>c.id==='chiron')||CARS[0],mesh=new THREE.Object3D();mesh.userData.wheels=[];const r=new AIRacerLegacy(ref,mesh,0,OL_K[def.open.route||0].g*(def.open.medalK||1));r.s=0;r.idx=0;r.lap=0;r.v=0;
+  const dt=1/30;let t=0,first=null,lap=0;for(let k=0;k<60000;k++){const b=r.lap;r.step(dt,true,null,0);t+=dt;if(r.lap!==b){if(first==null)first=t;else{lap=t-first;break;}}}
+  track=saved;if(!lap)lap=180;const out={};MEDALS.forEach(([m,f])=>out[m]=lap*f);return MEDAL_T[def.id]=out;};}
+{const rt=renderTracks;renderTracks=function(){const r=rt.apply(this,arguments);if(state.mode==='track')document.querySelectorAll('#tracks .trk').forEach(b=>{const t=TRACKS.find(x=>x.id===b.dataset.t),s=b.querySelector('small');
+  if(t&&t.open&&s&&!s.dataset.ol){s.dataset.ol=1;s.textContent='Open country · '+s.textContent;}});return r;};}
+/* ---- Open country (v176): what stands on the land ----------------------------------------------
+   Every prop is one merged geometry with its colours baked into the vertices, so a whole palm or
+   hut draws as a single instanced mesh. r is the radius a car hits at scale 1 (0: drive through
+   it), h how tall that obstacle is. Geometry is built once and kept for every race after. */
+const OLG={};const olGeo=(k,fn)=>OLG[k]||(OLG[k]=fn());
+const OLM={};const olMat=(k,o)=>{k+=JSON.stringify(o||{});return OLM[k]||(OLM[k]=new THREE.MeshStandardMaterial(Object.assign({vertexColors:true,roughness:.9,envMapIntensity:.6},o||{})));};
+function olMerge(parts){const pos=[],nor=[],col=[],c=new THREE.Color();
+  parts.forEach(([g,hex])=>{g=g.index?g.toNonIndexed():g;if(!g.attributes.normal)g.computeVertexNormals();c.set(hex).convertSRGBToLinear();
+    const P=g.attributes.position.array,N=g.attributes.normal.array,C=g.attributes.color;for(let i=0;i<P.length;i++){pos.push(P[i]);nor.push(N[i]);}
+    for(let i=0;i<P.length/3;i++)if(C)col.push(C.getX(i)*c.r,C.getY(i)*c.g,C.getZ(i)*c.b);else col.push(c.r,c.g,c.b);});
+  const r=new THREE.BufferGeometry();r.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));r.setAttribute('normal',new THREE.Float32BufferAttribute(nor,3));
+  r.setAttribute('color',new THREE.Float32BufferAttribute(col,3));r.computeBoundingSphere();return r;}
+/* lumpy without tearing: every copy of a corner moves by the same amount, then the faces are re-lit flat */
+function olLump(g,amt,seed){g=g.index?g.toNonIndexed():g;const p=g.attributes.position;for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i),
+    h=olHash(Math.round(x*97),Math.round(y*89)+Math.round(z*83)*7,seed||5),k=1+(h-.5)*2*amt;p.setXYZ(i,x*k,y*(1+(h-.5)*amt),z*k);}
+  g.computeVertexNormals();return g;}
+/* masonry: a box cut into stones about a metre by half a metre, each its own shade and a little darker and greener
+   at the foot, every corner nudged a few centimetres (the same for every copy of it, so nothing tears); taper narrows the top */
+function olStone(w,h,d,seed,taper){const g=new THREE.BoxGeometry(w,h,d,Math.max(1,Math.round(w/1.1)),Math.max(1,Math.round(h/.55)),Math.max(1,Math.round(d/1.1))).toNonIndexed(),p=g.attributes.position,c=new Float32Array(p.count*3);
+  for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i),q=(a,b)=>olHash(Math.round(x*50)+a,Math.round(y*50)*7+Math.round(z*50)*13,seed+b)-.5;
+    p.setXYZ(i,x+q(1,0)*.14,y+q(2,1)*.08,(z+q(3,2)*.14)*(taper&&y>0?taper:1));}
+  for(let i=0;i<p.count;i+=6){const v=.6+.5*olHash(seed,i,61),lo=p.getY(i)<-h/2+.7;for(let k=i;k<i+6&&k<p.count;k++){c[k*3]=v*(lo?.8:1);c[k*3+1]=v*(lo?.84:1);c[k*3+2]=v*(lo?.7:1);}}
+  g.setAttribute('color',new THREE.BufferAttribute(c,3));g.computeVertexNormals();return g;}
+/* a leaf, frond or pennant as a strip of quads: w(t) its half width and y(t) its droop along length L */
+function olStrip(L,segs,w,y){const pos=[];for(let s=0;s<segs;s++){const a=s/segs,b=(s+1)/segs,P=t=>[[-w(t),y(t),t*L],[w(t),y(t),t*L]],[p0,p1]=P(a),[q0,q1]=P(b);pos.push(...p0,...q0,...p1,...p1,...q0,...q1);}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.computeVertexNormals();return g;}
+const OL_P={
+  palm:()=>olGeo('palm',()=>{const tr=new THREE.CylinderGeometry(.15,.28,9,6,8,true).translate(0,4.5,0),p=tr.attributes.position;for(let i=0;i<p.count;i++){const k=p.getY(i)/9;p.setX(i,p.getX(i)+1.7*k*k);}
+    const parts=[[tr,0x8a7356]];for(let f=0;f<9;f++){const fr=olStrip(4.8,5,t=>.12+.62*Math.sin(Math.PI*Math.min(1,t*1.15))*(1-t*.35),t=>.7*t-2.6*t*t);fr.rotateX(-.25+(f%3)*.12).rotateY(f/9*Math.PI*2+.2).translate(1.7,9,0);parts.push([fr,f%2?0x3c7a2a:0x4a8a30]);}
+    parts.push([new THREE.IcosahedronGeometry(.42,0).translate(1.7,8.75,0),0x5a4a2a]);
+    return {geo:olMerge(parts),mat:olMat('leafy',{side:THREE.DoubleSide,roughness:.8}),r:.45,h:9};}),
+  acacia:()=>olGeo('acacia',()=>{const parts=[[new THREE.CylinderGeometry(.2,.34,3.4,6).translate(0,1.7,0),0x5a4634]];
+    [[.9,.5],[-.8,-.6],[.1,-1]].forEach(([x,z])=>parts.push([new THREE.CylinderGeometry(.08,.14,2.2,5).translate(0,1.1,0).rotateZ(-x*.55).rotateX(z*.55).translate(0,3.2,0),0x5a4634]));
+    parts.push([olLump(new THREE.IcosahedronGeometry(1,1),.3,3).scale(4.4,.75,4.1).translate(0,4.7,0),0x5f7a2c],[olLump(new THREE.IcosahedronGeometry(1,1),.3,9).scale(2.6,.55,2.4).translate(1.6,4.3,-1.2),0x6a8434]);
+    return {geo:olMerge(parts),mat:olMat('flat',{flatShading:true}),r:.42,h:5};}),
+  baobab:()=>olGeo('baobab',()=>{const parts=[[olLump(new THREE.CylinderGeometry(1.05,1.75,7,10,2),.12,4).translate(0,3.5,0),0x8a7a6a]];
+    for(let k=0;k<6;k++){const a=k/6*Math.PI*2;parts.push([new THREE.CylinderGeometry(.16,.34,2.8,5).translate(0,1.4,0).rotateZ(.75).rotateY(a).translate(Math.cos(a)*.5,6.8,-Math.sin(a)*.5),0x7a6a5a]);
+      parts.push([olLump(new THREE.IcosahedronGeometry(1,0),.3,k).scale(1.3,.7,1.3).translate(Math.cos(a)*2.4,8.9,-Math.sin(a)*2.4),0x6a8a3a]);}
+    return {geo:olMerge(parts),mat:olMat('flat',{flatShading:true}),r:1.7,h:9};}),
+  tree:()=>olGeo('tree',()=>{const parts=[[new THREE.CylinderGeometry(.22,.38,5,6).translate(0,2.5,0),0x5a4a36]];   // a broadleaf: the jungle's canopy between the palms
+    [[0,6.4,0,2.7],[1.5,5.5,.8,2],[-1.3,5.7,-.9,2.1]].forEach(([x,y,z,r],k)=>parts.push([olLump(new THREE.IcosahedronGeometry(r,1),.25,20+k).translate(x,y,z),k%2?0x2f5a26:0x3c6c2c]));
+    return {geo:olMerge(parts),mat:olMat('flat',{flatShading:true}),r:.5,h:8};}),
+  pine:()=>olGeo('pine',()=>{const parts=[[new THREE.CylinderGeometry(.18,.3,3,6).translate(0,1.5,0),0x3a2a1c]];
+    [[2.6,3.6,3.2],[2.1,3.2,5.4],[1.5,2.8,7.4],[.9,2.2,9.1]].forEach(([r,h,y])=>{const c=new THREE.ConeGeometry(r,h,9,1).translate(0,y,0).toNonIndexed();c.computeVertexNormals();
+      const n=c.attributes.normal,col=new Float32Array(n.count*3);for(let i=0;i<n.count;i++){const s=n.getY(i)>.35?.92:0;col[i*3]=.07+s;col[i*3+1]=.16+s*.8;col[i*3+2]=.09+s*.85;}c.setAttribute('color',new THREE.BufferAttribute(col,3));parts.push([c,0xffffff]);});
+    return {geo:olMerge(parts),mat:olMat('flat',{flatShading:true}),r:.5,h:10};}),
+  fir:()=>olGeo('fir',()=>{const parts=[[new THREE.CylinderGeometry(.18,.3,3,6).translate(0,1.5,0),0x3a2a1c]];
+    [[2.5,3.6,3.2],[2,3.2,5.3],[1.4,2.8,7.2],[.8,2.2,8.8]].forEach(([r,h,y],k)=>parts.push([new THREE.ConeGeometry(r,h,8,1).translate(0,y,0),k%2?0x1f4a2a:0x245430]));
+    return {geo:olMerge(parts),mat:olMat('flat',{flatShading:true}),r:.5,h:10};}),
+  bush:()=>olGeo('bush',()=>({geo:olMerge([[olLump(new THREE.IcosahedronGeometry(1,1),.35,7).scale(1.5,.95,1.4).translate(0,.6,0),0xffffff]]),mat:olMat('flat',{flatShading:true}),r:0,h:1})),
+  rock:v=>olGeo('rock'+(v|0),()=>({geo:olMerge([[olLump(new THREE.DodecahedronGeometry(1,v>1?1:0),.42,11+(v|0)*7).scale(1,.7,1),0xffffff]]),mat:olMat('flat',{flatShading:true,roughness:1}),r:.85,h:1.4})),
+  mound:()=>olGeo('mound',()=>({geo:olMerge([[olLump(new THREE.ConeGeometry(1.15,3.6,8,3),.22,13).translate(0,1.6,0),0xffffff],[olLump(new THREE.ConeGeometry(.5,1.6,6,1),.2,4).translate(.6,1.6,.2),0xffffff]]),mat:olMat('flat',{flatShading:true,roughness:1}),r:1,h:3.4})),
+  tuft:()=>olGeo('tuft',()=>{const parts=[];for(let k=0;k<5;k++)parts.push([new THREE.ConeGeometry(.12,1.1+k%3*.35,3).translate(Math.cos(k*1.3)*.3,.5,Math.sin(k*1.3)*.3).rotateZ((k-2)*.16),0xffffff]);
+    return {geo:olMerge(parts),mat:olMat('flat',{flatShading:true}),r:0,h:1};}),
+  hut:()=>olGeo('hut',()=>({geo:olMerge([[new THREE.CylinderGeometry(2.4,2.5,2.4,12).translate(0,1.2,0),0xc8a87a],[new THREE.ConeGeometry(3.3,2.8,12).translate(0,3.8,0),0x8a6a3a],
+      [new THREE.BoxGeometry(1,1.7,.2).translate(0,.85,2.46),0x3a2a1a]]),mat:olMat('flat',{flatShading:true}),r:2.7,h:5})),
+  tent:()=>olGeo('tent',()=>({geo:olMerge([[new THREE.ConeGeometry(3.6,2.6,4).rotateY(Math.PI/4).scale(1.5,1,1).translate(0,1.3,0),0x3a2a22],[new THREE.BoxGeometry(.12,3,.12).translate(0,1.5,0),0x2a1a12]]),
+      mat:olMat('flat',{flatShading:true}),r:3.2,h:2.6})),
+  icehut:v=>olGeo('icehut'+v,()=>({geo:olMerge([[new THREE.BoxGeometry(2.4,2.1,3.2).translate(0,1.05,0),[0xc8281e,0xf5c518,0x1e4fd0,0x1f9a4a][v%4]],
+      [new THREE.CylinderGeometry(1.72,1.72,3.5,3).rotateX(-Math.PI/2).scale(1,.62,1).translate(0,2.1+.53,0),0xf2f6fa],[new THREE.BoxGeometry(.9,1.4,.12).translate(0,.7,1.62),0x3a2a1a],
+      [new THREE.BoxGeometry(.22,.9,.22).translate(.7,3,0),0x5a5a60]]),mat:olMat('flat',{flatShading:true}),r:1.9,h:3})),
+  cabin:()=>olGeo('cabin',()=>({geo:olMerge([[new THREE.BoxGeometry(7,3.2,5).translate(0,1.6,0),0x6a4a30],[new THREE.CylinderGeometry(3.3,3.3,7.6,3).rotateX(-Math.PI/2).rotateY(Math.PI/2).scale(1,.55,1).translate(0,3.2+.9,0),0xe8eef4],
+      [new THREE.BoxGeometry(.7,1.8,.7).translate(2,4.6,0),0x5a5a60],[new THREE.BoxGeometry(1.1,.9,.1).translate(-1.6,1.9,2.52),0xffd890],[new THREE.BoxGeometry(1.1,.9,.1).translate(1.6,1.9,2.52),0xffd890]]),
+      mat:olMat('flat',{flatShading:true}),r:4.2,h:5})),
+  stilt:()=>olGeo('stilt',()=>{const parts=[[new THREE.BoxGeometry(5,.3,5).translate(0,2.2,0),0x8a6a44],[new THREE.BoxGeometry(4.2,2.2,4.2).translate(0,3.45,0),0xc8a878],[new THREE.ConeGeometry(4.2,2.6,4).rotateY(Math.PI/4).translate(0,5.85,0),0x9a7a44]];
+    [[2,2],[-2,2],[2,-2],[-2,-2]].forEach(([x,z])=>parts.push([new THREE.CylinderGeometry(.14,.16,3,5).translate(x,.7,z),0x5a4026]));
+    return {geo:olMerge(parts),mat:olMat('flat',{flatShading:true}),r:3,h:7};}),
+  reeds:()=>olGeo('reeds',()=>{const parts=[];for(let k=0;k<9;k++){const a=k*2.4,r=.25+(k%4)*.22;parts.push([new THREE.ConeGeometry(.05,1.6+(k%3)*.5,3).translate(Math.cos(a)*r,.8,Math.sin(a)*r).rotateZ(Math.cos(a)*.12),k%3?0x7a8a3a:0x9a9a52]);}
+    return {geo:olMerge(parts),mat:olMat('flat',{flatShading:true}),r:0,h:1};}),
+  /* route markers: none of them stops a car */
+  flag:()=>olGeo('flag',()=>({geo:olMerge([[new THREE.CylinderGeometry(.035,.045,2.5,5).translate(0,1.25,0),0xe8e8e8],[olStrip(.9,2,t=>.32*(1-t),t=>0).rotateZ(Math.PI/2).translate(0,2.18,0),0xffffff]]),mat:olMat('leafy',{side:THREE.DoubleSide,roughness:.8}),r:0,h:2.5})),
+  snowpole:()=>olGeo('snowpole',()=>({geo:olMerge([[new THREE.CylinderGeometry(.04,.04,1.3,5).translate(0,.65,0),0x1c1d22],[new THREE.CylinderGeometry(.045,.045,.5,5).translate(0,1.55,0),0xffffff]]),mat:olMat('flat',{emissive:0x000000}),r:0,h:1.8})),
+  stake:()=>olGeo('stake',()=>({geo:olMerge([[new THREE.BoxGeometry(.12,1.2,.12).translate(0,.6,0),0x6a4a2a],[new THREE.BoxGeometry(.14,.16,.02).translate(0,1.05,.07),0xffffff]]),mat:olMat('flat'),r:0,h:1.2})),
+  cairn:()=>olGeo('cairn',()=>({geo:olMerge([[olLump(new THREE.IcosahedronGeometry(.55,0),.3,2).scale(1,.6,1).translate(0,.3,0),0xffffff],[olLump(new THREE.IcosahedronGeometry(.4,0),.3,3).scale(1,.6,1).translate(.05,.78,0),0xffffff],
+      [olLump(new THREE.IcosahedronGeometry(.27,0),.3,4).translate(0,1.12,.03),0xffffff]]),mat:olMat('flat',{flatShading:true,roughness:1}),r:0,h:1.3}))};
+/* the arch over a checkpoint: an inflatable half-ring on two weighted feet, a banner under its crown */
+function olArch(R,col,label,start){const g=new THREE.Group(),m=new THREE.MeshStandardMaterial({color:col,roughness:.55,emissive:col,emissiveIntensity:.08}),
+  ring=new THREE.Mesh(new THREE.TorusGeometry(R,.95,8,28,Math.PI),m);ring.castShadow=true;g.add(ring);
+  const base=tdM(0x2a2a2e,{roughness:.8});[-R,R].forEach(x=>{const b=new THREE.Mesh(new THREE.BoxGeometry(2.2,.9,2.2),base);b.position.set(x,.45,0);g.add(b);});
+  const tex=canvasTex(512,96,(c,w,h)=>{if(start){const s=24;for(let i=0;i<w/s;i++)for(let j=0;j<h/s;j++){c.fillStyle=(i+j)%2?'#111':'#f4f2ec';c.fillRect(i*s,j*s,s,s);}c.fillStyle='rgba(0,0,0,.72)';c.fillRect(70,14,w-140,h-28);}
+    else{c.fillStyle='#16181d';c.fillRect(0,0,w,h);c.fillStyle='#'+new THREE.Color(col).getHexString();c.fillRect(0,0,w,10);c.fillRect(0,h-10,w,10);}
+    c.fillStyle='#fff';c.font='italic 900 52px Arial, sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText(label,w/2,h/2+2);},1,1);
+  const ban=new THREE.Mesh(new THREE.PlaneGeometry(R*1.05,R*1.05*96/512*1.4),new THREE.MeshStandardMaterial({map:tex,roughness:.7,side:THREE.DoubleSide}));ban.position.set(0,R-1.9,0);ban.rotation.y=Math.PI;g.add(ban);
+  g.userData.mat=m;return g;}
+/* a corner board: three chevrons on two posts, pointing the way round */
+const olChevTex=()=>tdTex('olchev',()=>canvasTex(256,96,(c,w,h)=>{c.fillStyle='#f4f2ec';c.fillRect(0,0,w,h);c.fillStyle='#c8281e';for(let k=0;k<3;k++){const x=40+k*70;c.beginPath();c.moveTo(x,10);c.lineTo(x+38,h/2);c.lineTo(x,h-10);c.lineTo(x+22,h-10);c.lineTo(x+60,h/2);c.lineTo(x+22,10);c.fill();}},1,1));
+function olChevron(){return olGeo('chev',()=>({geo:olMerge([[new THREE.BoxGeometry(.1,1.6,.1).translate(-1.2,.8,0),0x50555e],[new THREE.BoxGeometry(.1,1.6,.1).translate(1.2,.8,0),0x50555e]]),
+  board:new THREE.PlaneGeometry(3,1.1).translate(0,1.7,.06),bmat:new THREE.MeshStandardMaterial({map:olChevTex(),roughness:.6,side:THREE.DoubleSide})}));}
+/* ---- Open country (v176): the tracks ---------------------------------------------------------------
+   Each is laid out from its checkpoints: the arches sit on a rough ring, and the route between two of
+   them bows out round whatever lies on the straight line - a dune, a pond, a ridge with a slot through
+   it, a salt pan - so the straight line is the shortcut and the land decides what it costs. */
+function olPlan(G,dets,lead){const N=G.length;let cx=0,cz=0;G.forEach(p=>{cx+=p[0]/N;cz+=p[1]/N;});const pts=[];
+  for(let i=0;i<N;i++){const A=G[i],B=G[(i+1)%N],dx=B[0]-A[0],dz=B[1]-A[1],L=Math.hypot(dx,dz);let px=-dz/L,pz=dx/L;if(px*((A[0]+B[0])/2-cx)+pz*((A[1]+B[1])/2-cz)<0){px=-px;pz=-pz;}
+    pts.push(A);if(i===0)pts.push([A[0]+lead[0],A[1]+lead[1]]);const d=dets[i]||[];d.forEach((o,k)=>{const t=(k+1)/(d.length+1);pts.push([A[0]+dx*t+px*o,A[1]+dz*t+pz*o]);});
+    if(i===N-1)pts.push([G[0][0]-lead[0],G[0][1]-lead[1]]);}
+  return pts;}
+/* a frame on the straight line between two arches: along it (a), across it pointing out of the ring (p) */
+function olLeg(G,i){const N=G.length,A=G[i],B=G[(i+1)%N],dx=B[0]-A[0],dz=B[1]-A[1],L=Math.hypot(dx,dz);let cx=0,cz=0;G.forEach(p=>{cx+=p[0]/N;cz+=p[1]/N;});
+  const m=[(A[0]+B[0])/2,(A[1]+B[1])/2];let px=-dz/L,pz=dx/L;if(px*(m[0]-cx)+pz*(m[1]-cz)<0){px=-px;pz=-pz;}
+  return {m,L,at:(t,o)=>[A[0]+dx*t+px*o,A[1]+dz*t+pz*o],loc:(x,z)=>[(x-m[0])*dx/L+(z-m[1])*dz/L,(x-m[0])*px+(z-m[1])*pz]};}
+
+/* ---- Mare di Sabbia: a rally raid through the dunes ---- */
+THEMES.erg={sky:[0x2a64c0,0x86b2e2,0xe8d4b0],fog:[0xd2bf9c,700,3200],sun:[0xfff0d6,2.6],hemi:[0x9ab8e4,0x8a6a40,.85],ground:'sand',exposure:.8,
+  cloud:{cov:.16,col:0xffffff,sun:0xfff4e0,dir:[.45,.66,.6],pow:2600,star:0},stands:[0xff6a13,0x1e4fd0]};
+{const G=[[0,0],[600,-90],[975,-525],[712,-975],[187,-1087],[-262,-750],[-375,-300]],L1=olLeg(G,1),L3=olLeg(G,3),L4=olLeg(G,4),L5=olLeg(G,5),L2=olLeg(G,2),
+  DU=L1.m,OA=L3.at(.5,30),
+  /* the dune field: transverse ridges across the wind, crests bent by noise, gentle up the windward side and steep down the slip face */
+  dunes=(x,z)=>{const u=x*.83+z*.56,v=-x*.56+z*.83,w=u/140+1.4*olFbm(v/380+3,u/900,5,3),f=w-Math.floor(w),p=f<.75?Math.sin(f/.75*Math.PI/2)**2:Math.pow((1-f)/.25,1.6);return p*(3+13*olFbm(x/520,z/520,9,3));},
+  pan=(x,z)=>{const [a,p]=L5.loc(x,z);return Math.hypot(a/170,p/105);},
+  jebel=(x,z)=>{const [a,p]=L4.loc(x,z),r=Math.exp(-((a/30)**2))*olSS(-150,-95,p)*olSS(330,250,p);return r*(30+8*olFbm(x/26,z/26,41,3))*(1-.9*Math.exp(-((p/9)**2)));},
+  pond=(x,z)=>Math.hypot(x-OA[0],z-OA[1]),
+  h=(x,z)=>{let y=4+5*olFbm(x/700,z/700,3,3);const dO=pond(x,z),dP=pan(x,z);y+=dunes(x,z)*olSS(90,240,dO)*olSS(.9,1.6,dP);
+    {const d=Math.hypot(x-DU[0],z-DU[1]),a=Math.atan2(z-DU[1],x-DU[0]);y+=46*Math.exp(-((d/(150*(1+.18*Math.sin(5*a+1))))**2)*1.4);}
+    y-=12*Math.exp(-((dO/90)**2));if(dP<1.25)y+=(1.4-y)*(1-olSS(.85,1.25,dP));return y+jebel(x,z);};
+  TRACKS.push({id:'sabbia',name:'Mare di Sabbia',theme:'erg',laps:2,prize:[35000,60000],
+    blurb:'Open country: a rally raid through the dunes, no walls anywhere. Drive through the checkpoint arches in order and take any line you like between them: over the big dune, through the slot in the ridge, across the salt pan, past the oasis.',
+    pts:olPlan(G,[[40],[150,230,150],[85,-85,85,-60],[-120,-160,-120],[-150,-200,-150],[150,180,150],[-40]],[150,0]),
+    open:{seed:11,route:0,water:-1,hw:8,oob:260,drift:.5,gates:G,h,
+      kind:(x,z,y,d,sl)=>{if(pan(x,z)<1.02)return 11;const dO=pond(x,z);if(dO<125&&y>-1.2)return dO<85?1:9;if(jebel(x,z)>2.5||sl>.95)return 3;return sl<.09&&y<10?9:2;},
+      col:(c,k,y,x,z,sl)=>{const n=olFbm(x/38,z/38,21,2);if(k===11)c.setRGB(.92,.89,.83).multiplyScalar(.94+.1*n);else if(k===3)c.setRGB(.56,.36,.24).multiplyScalar(.85+.3*n);else if(k===1)c.setRGB(.42,.5,.24).multiplyScalar(.85+.3*n);
+        else c.setRGB(.8-.1*Math.min(1,sl*2),.6-.09*Math.min(1,sl*2),.39-.06*Math.min(1,sl*2)).multiplyScalar((k===9?.92:1)*(.93+.12*n));},
+      rcol:(c,x,z)=>c.setRGB(.56,.45,.34).multiplyScalar(.94+.12*olNoise(x/9,z/9,4)),
+      rib:{a:'rgba(90,64,40,.4)',b:'rgba(225,200,165,.3)',rut:'rgba(70,50,32,.34)'},dust:{2:0xe0c088,9:0xd8b884,11:0xf2eee6,3:0xb08060,1:0xb8a070},dustCol:0xd8b880,
+      marks:{p:'flag',every:40,cols:[0xff3a1a,0xf4f2ec]},gateCol:0xff6a13,beam:0xffd060,waterCol:0x2a7a7a,
+      bulls:[DU,L4.m,L5.m,L3.at(.5,-8),L2.m],
+      rise:(x,z,o)=>o*.012*(10+30*olFbm(x/900,z/900,6,3)),
+      scatter:[{p:'palm',n:80,s:[.8,1.25],near:[[OA[0],OA[1],150]],clear:4,shadow:true,c:R=>R()<.5?0xffffff:0xe8f0d8},
+        {p:'tent',n:5,s:[1,1.25],near:[[...L3.at(.5,-60),45]],clear:8},
+        {p:'rock',v:1,n:260,s:[.8,3.4],near:[[L4.m[0],L4.m[1],330]],clear:4,c:R=>[0x8a5a3a,0x7a4a30,0x9a6a44][(R()*3)|0],where:(x,z,y,k)=>k===3||k===2},
+        {p:'rock',v:0,n:90,s:[.5,1.4],clear:4,c:()=>0x9a7050,where:(x,z,y,k)=>k===2||k===9},
+        {p:'bush',n:520,s:[.35,.9],clear:2,c:R=>[0x8a8a4a,0x9a8a5a,0x6a7a3a][(R()*3)|0],where:(x,z,y,k)=>k===9||k===1||(k===2&&olHash(x|0,z|0,8)<.05),sink:.2},
+        {p:'reeds',n:70,s:[.8,1.3],near:[[OA[0],OA[1],75]],clear:2,wet:true,where:(x,z,y)=>y>-1.6&&y<-.3}],
+      extra:(W,Gm,grp)=>{const mud=tdM(0xb88a5a,{roughness:.95}),dark=tdM(0x5a3a22,{roughness:.9}),f=new THREE.Group(),[fx,fz]=L4.at(.35,-90),y=olY(fx,fz);   // a ruined ksar by the ridge
+        [[0,0,26,7,26],[-12,9,4,9,4],[12,-12,4,10,4],[12,12,4,8,4],[-12,-12,4,11,4]].forEach(([x,z,w,h,d],k)=>{tdBox(f,k?mud:mud,w,h,d,x,h/2-1,z);if(!k)tdBox(f,dark,w-4,.6,d-4,x,h-1,z);});
+        for(let k=0;k<12;k++)tdBox(f,mud,1.4,1.2,1.4,-13+k*2.4,6.6,13);f.position.set(fx,y,fz);f.rotation.y=.4;grp.add(f);tdMerge(f);
+        olCol({t:0,x:fx,z:fz,r:16,y0:y-2,y1:y+12});}}});}
+
+/* ---- Lago di Cristallo: ice racing on a frozen lake ---- */
+THEMES.frost={sky:[0x2e4e8a,0x9cb0d6,0xf6d0b6],fog:[0xc6cce0,650,3300],sun:[0xffd4ac,1.9],hemi:[0xaabde6,0x6c7890,.9],ground:'snow',exposure:.7,
+  cloud:{cov:.3,col:0xf4e8ee,sun:0xffcca0,dir:[.74,.15,.66],pow:900,star:0},stands:[0x1e4fd0,0xff6a13]};
+{const G=[[0,0],[600,20],[1080,-200],[1000,-640],[520,-800],[-20,-700],[-250,-330]],L=G.map((p,i)=>olLeg(G,i)),IS=L[3].m,VI=L[4].m,RF=L[5].m,DF=L[6].m,
+  lakeE=(x,z)=>Math.hypot((x-420)/900,(z+380)/560)+.05*(olFbm(x/260,z/260,15,3)-.5),isl=(x,z)=>Math.hypot(x-IS[0],z-IS[1]),
+  /* a lead of open water across leg 1, frozen over only where the straight line between the arches crosses it */
+  lead=(x,z)=>{const [a,p]=L[1].loc(x,z);return olSS(10,6,Math.abs(a-35*Math.sin(p/55)))*olSS(-330,-300,p)*olSS(48,34,p)*(1-olSS(9,5,Math.abs(p+4)));},
+  /* a pressure ridge of heaved-up ice across leg 2, broken in two places */
+  rp=p=>L[2].at(.5+25*Math.sin(p/40)/L[2].L,p),ridge=(x,z)=>{const [a,p]=L[2].loc(x,z);return Math.abs(a-25*Math.sin(p/40))<3.2&&p>-210&&p<40&&Math.abs(p+54)>7&&Math.abs(p-16)>7;},
+  h=(x,z)=>{const e=lakeE(x,z);let y=e<1?0:(e-1)*55*(1+.7*olFbm(x/420,z/420,16,3))+olSS(1,1.3,e)*22*olFbm(x/170,z/170,17,4);const d=isl(x,z);
+    if(d<90)y=Math.max(y,8*Math.exp(-((d/42)**2))-1+2.4*olFbm(x/24,z/24,18,2)*Math.exp(-((d/50)**2)));const w=e<.96?lead(x,z):0;return w>.02?Math.min(y,-3.4*w):y;};
+  TRACKS.push({id:'cristallo',name:'Lago di Cristallo',theme:'frost',laps:2,prize:[35000,60000],
+    blurb:'Open country: an ice race on a frozen alpine lake, the piste ploughed through the snow. Take the arches in order and any line between them: bare ice is quick in a straight line and treacherous in a turn, and the lake has an island, a reef, a village of fishing huts, a pressure ridge and a lead of open water to find a way round.',
+    pts:olPlan(G,[[50],[80,110,80],[70,90,70],[-100,-140,-100],[60,80,60],[80,100],[70]],[140,0]),
+    open:{seed:21,route:8,hw:9,water:-.5,oob:260,drift:.35,gates:G,h,
+      post:(W,k,x,z,d)=>{const H=W.H,hw=W.hw;if(Math.abs(H[k])>.01||lakeE(x,z)>.99)return;
+        if(d>hw+1&&d<hw+7.5)H[k]+=.8*Math.sin(Math.PI*(d-hw-1)/6.5)**1.5;   // the plough's bank either side of the piste
+        else if(d>hw+11){const s=olFbm(x/70,z/70,19,3),t=Math.hypot(x-DF[0],z-DF[1])<170?.48:.66;if(s>t)H[k]+=Math.min(.5,(s-t)*4);}},   // drifts, deepest on leg 6
+      kind:(x,z,y,d,sl)=>{if(lakeE(x,z)<1&&isl(x,z)>62){if(y<.12)return 5;if(y<1.3)return 4;}return sl>.75?3:4;},
+      col:(c,k,y,x,z,sl)=>{const n=olFbm(x/34,z/34,23,2);if(k===5){if(y<-.4)c.setRGB(.05,.1,.13);else c.setRGB(.42,.56,.68).multiplyScalar(.86+.22*olFbm(x/16,z/16,24,3));}
+        else if(k===3)c.setRGB(.33,.33,.37).multiplyScalar(.8+.3*n);else c.setRGB(.88,.9,.95).multiplyScalar(.95+.07*n-.16*Math.min(1,sl));},
+      rcol:(c,x,z)=>c.setRGB(.7,.74,.81).multiplyScalar(.95+.08*olNoise(x/7,z/7,25)),
+      rib:{a:'rgba(120,132,155,.34)',b:'rgba(255,255,255,.28)',rut:'rgba(90,104,130,.36)'},dust:{4:0xffffff,5:0xeaf4ff,8:0xf2f6fc,3:0xc8ccd4},dustCol:0xffffff,spray:0xdfeef4,
+      marks:{p:'snowpole',every:22,cols:[0xffffff,0xff5a1a]},gateCol:0x1e6ad0,beam:0x9ad0ff,waterCol:0x14303c,waterOp:.92,
+      bulls:[L[1].at(.5,-4),IS,VI,RF,rp(-54)],
+      rise:(x,z,o)=>Math.min(1,o/1600)*(240+780*olFbm(x/900,z/900,26,3)),
+      scatter:[{p:'pine',n:420,s:[.8,1.4],clear:8,shadow:true,where:(x,z,y,k)=>y>1.2&&k===4&&lakeE(x,z)>1.02},
+        {p:'fir',n:200,s:[.8,1.3],clear:8,where:(x,z,y,k)=>y>2&&k===4&&lakeE(x,z)>1.03},
+        {p:'pine',n:36,s:[.7,1.2],near:[[...IS,56]],clear:8,where:(x,z,y)=>y>.9&&isl(x,z)>8},
+        {p:'rock',v:1,n:110,s:[.8,2.6],clear:6,c:R=>[0x5a5c64,0x6a6c74,0x4a4c54][(R()*3)|0],where:(x,z,y,k)=>k===3||(y>.8&&olHash(x|0,z|0,31)<.1)},
+        {p:'rock',v:0,n:150,s:[.9,2.1],near:Array.from({length:13},(_,i)=>[...rp(-210+i*20),14]),clear:12,c:R=>R()<.5?0xd4e8f4:0xbcd6e8,where:ridge},
+        {p:'rock',v:1,n:24,s:[2.2,4.4],near:[[...RF,55]],clear:12,c:()=>0x55575e,where:(x,z)=>Math.hypot(x-RF[0],z-RF[1])>12},
+        ...[0,1,2,3].map(v=>({p:'icehut',v,n:3,s:[1,1.15],near:[[...VI,75]],clear:12,where:(x,z,y)=>y<.15&&Math.hypot(x-VI[0],z-VI[1])>14})),
+        {p:'cabin',n:5,s:[1,1.1],near:[[0,205,75]],clear:14,where:(x,z)=>lakeE(x,z)>1.03}],
+      extra:(W,Gm,grp)=>{const x0=-500,x1=1340,z0=-960,z1=200,S=512,   // a glaze over the bare ice, so the lake shines wherever it is not snow
+        tex=canvasTex(S,S,c=>{const img=c.createImageData(S,S),d=img.data;for(let j=0;j<S;j++)for(let i=0;i<S;i++){const x=x0+(i+.5)/S*(x1-x0),z=z0+(j+.5)/S*(z1-z0),y=olY(x,z),o=(j*S+i)*4;
+          d[o]=d[o+1]=d[o+2]=olKind(x,z)===5&&y>-.25&&y<.1?255:0;d[o+3]=255;}c.putImageData(img,0,0);},1,1,true),
+          geo=new THREE.PlaneGeometry(x1-x0,z1-z0),m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0xdcecf8,roughness:.12,metalness:.1,transparent:true,opacity:.5,alphaMap:tex,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3}));
+        m.rotation.x=-Math.PI/2;m.position.set((x0+x1)/2,.02,(z0+z1)/2);grp.add(m);W.disp.push(geo,tex,m.material);}}});}
+
+/* ---- Savana Rossa: red dirt across the grasslands ---- */
+THEMES.savanna={sky:[0x3a68b0,0x9cc0e2,0xf2d8aa],fog:[0xd8c8a6,900,3900],sun:[0xffdcaa,2.5],hemi:[0xa6bee0,0x7a5a36,.9],ground:'grass',exposure:.8,
+  cloud:{cov:.34,col:0xffffff,sun:0xfff0d8,dir:[-.55,.42,.72],pow:1800,star:0},stands:[0xd8501c,0x1f9a4a]};
+{const G=[[0,0],[620,40],[1050,-280],[900,-820],[380,-1000],[-180,-760],[-330,-300]],L=G.map((p,i)=>olLeg(G,i)),MO=L[0].m,KO=L[1].m,WH=L[3].m,AW=L[4].m,VI=L[5].m,MT=[520,-3700],TG=new THREE.Color(.74,.63,.36),
+  wash=(x,z)=>{const [a,p]=L[2].loc(x,z);return Math.abs(a)<460?Math.abs(p-28*Math.sin(a/85)-10):99;},   // how far from the middle of the dry river
+  pond=(x,z)=>{const [a,p]=L[3].loc(x,z);return [Math.hypot(a/60,p/150),p];},
+  kop=(x,z)=>{const d=Math.hypot(x-KO[0],z-KO[1]),a=Math.atan2(z-KO[1],x-KO[0]);return 24*Math.exp(-((d/(72*(1+.2*Math.sin(3*a+1))))**2.4));},
+  h=(x,z)=>{let y=4+4*olFbm(x/600,z/600,31,3)+1.4*olFbm(x/90,z/90,32,2);const w=wash(x,z);if(w<16)y-=3.2*olSS(15,10,w)*olSS(460,400,Math.abs(L[2].loc(x,z)[0]));
+    y+=kop(x,z)*(1+.25*olFbm(x/14,z/14,33,2));const [pd,pp]=pond(x,z),f=olSS(.75,.45,pd);if(f>0)y+=(-2.6+1.6*Math.exp(-(((pp-35)/11)**2))-y)*f;return y;};   // the waterhole, a bar of shallows across it
+  TRACKS.push({id:'savana',name:'Savana Rossa',theme:'savanna',laps:2,prize:[35000,60000],
+    blurb:'Open country: red dirt across the grasslands, no walls anywhere. Take the arches in order and any line between them: over the kopje, along the dry riverbed, through the shallows at the waterhole, between the acacias or straight through the village.',
+    pts:olPlan(G,[[70],[120,170,120],[90,110,90],[-110,-140,-110],[80,100,80],[70,90,70],[70]],[140,0]),
+    open:{seed:31,route:12,hw:8,water:-.6,oob:260,drift:.5,gates:G,h,
+      kind:(x,z,y,d,sl)=>{if(y>820)return 4;if(y>160)return 3;if(pond(x,z)[0]<.85)return 6;if(wash(x,z)<12)return 9;if((kop(x,z)>2.5&&sl>.3)||sl>.7)return 3;
+        if(Math.hypot(x-VI[0],z-VI[1])<46)return 12;return olFbm(x/160,z/160,34,3)>.54?10:1;},
+      col:(c,k,y,x,z,sl)=>{const n=olFbm(x/40,z/40,35,2);if(k===4)c.setRGB(.92,.93,.96);else if(k===6)c.setRGB(.34,.27,.2).multiplyScalar(.85+.3*n);else if(k===9)c.setRGB(.8,.66,.48).multiplyScalar(.92+.12*n);
+        else if(k===3)c.setRGB(.58,.5,.46).multiplyScalar(.8+.35*n);else if(k===12)c.setRGB(.6,.37,.23).multiplyScalar(.9+.2*n);else if(k===10)c.setRGB(.76,.66,.38).multiplyScalar(.9+.18*n);
+        else c.setRGB(.58,.57,.3).lerp(TG,olFbm(x/300,z/300,36,2)).multiplyScalar(.88+.2*n);},
+      rcol:(c,x,z)=>c.setRGB(.64,.36,.22).multiplyScalar(.93+.14*olNoise(x/8,z/8,37)),
+      rib:{a:'rgba(110,52,30,.38)',b:'rgba(220,150,110,.26)',rut:'rgba(90,40,22,.34)'},dust:{12:0xc07850,1:0xb8a070,10:0xc4ac74,9:0xd8c090,6:0x6a5038,3:0xb0a090},dustCol:0xc07850,spray:0xb8b098,
+      marks:{p:'stake',every:30,cols:[0xffffff,0xff6a13]},gateCol:0xd8501c,beam:0xffb060,waterCol:0x4a5a3a,waterOp:.86,
+      bulls:[MO,KO,L[3].at(.5,35),VI,AW],
+      rise:(x,z,o)=>o*.004*(8+14*olFbm(x/900,z/900,37,3))+olSS(0,500,o)*1750*Math.exp(-((Math.hypot(x-MT[0],z-MT[1])/1250)**2)),
+      scatter:[{p:'mound',n:45,s:[1.1,2.3],near:[[...MO,120]],clear:5,c:R=>R()<.5?0xa0583a:0x8a4a30,where:(x,z)=>Math.hypot(x-MO[0],z-MO[1])>7},
+        {p:'mound',n:30,s:[.8,1.6],clear:5,c:()=>0x9a5236,where:(x,z,y,k)=>k===1||k===10},
+        {p:'rock',v:1,n:60,s:[2.4,6],near:[[...KO,92]],clear:6,c:R=>[0x8a7a72,0x9a8a80,0x7a6a62][(R()*3)|0],where:(x,z)=>kop(x,z)>1.5&&Math.hypot(x-KO[0],z-KO[1])>10},
+        {p:'acacia',n:170,s:[.85,1.35],near:[[...AW,150]],clear:6,shadow:true,where:(x,z)=>Math.hypot(x-AW[0],z-AW[1])>7},
+        {p:'acacia',n:110,s:[.8,1.3],clear:6,shadow:true,where:(x,z,y,k)=>k===1||k===10},
+        {p:'baobab',n:7,s:[.9,1.25],near:[[...L[6].m,130]],clear:8,shadow:true},{p:'baobab',n:8,s:[.8,1.2],clear:8,shadow:true,where:(x,z,y,k)=>k===1},
+        {p:'hut',n:7,s:[.9,1.1],near:[[...VI,31]],clear:8,where:(x,z)=>Math.abs(L[5].loc(x,z)[1])>9&&Math.hypot(x-VI[0],z-VI[1])<31},
+        {p:'tuft',n:1400,s:[.8,1.5],clear:1,c:R=>R()<.5?0xc8b070:0xb0a060,where:(x,z,y,k)=>k===10||(k===1&&olHash(x|0,z|0,38)<.3)},
+        {p:'bush',n:240,s:[.5,1.1],clear:2,c:R=>[0x6a7a3a,0x7a8a44,0x5a6a30][(R()*3)|0],where:(x,z,y,k)=>k===1||k===9},
+        {p:'reeds',n:60,s:[.8,1.3],near:[[...WH,160]],clear:2,wet:true,where:(x,z,y)=>y>-1.2&&y<.2}],
+      extra:(W,Gm,grp)=>{const ua=Math.atan2(G[6][1]-G[5][1],G[6][0]-G[5][0]),R0=40,parts=[];   // a thorn boma round the village, open where the line between the arches runs through it
+        for(let a=0;a<Math.PI*2-.01;a+=.12){if([ua,ua+Math.PI].some(b=>Math.abs(Math.atan2(Math.sin(a+.06-b),Math.cos(a+.06-b)))<.27))continue;
+          const ax=VI[0]+Math.cos(a)*R0,az=VI[1]+Math.sin(a)*R0,bx=VI[0]+Math.cos(a+.12)*R0,bz=VI[1]+Math.sin(a+.12)*R0,mx=(ax+bx)/2,mz=(az+bz)/2,y=olY(mx,mz);
+          parts.push([olLump(new THREE.BoxGeometry(5.2,1.5,1.4,3,2,2),.25,(a*100)|0).rotateY(-Math.atan2(bz-az,bx-ax)).translate(mx,y+.6,mz),0x6a5a46]);olCol({t:2,ax,az,bx,bz,r:.75,y0:y-1,y1:y+1.8});}
+        const geo=olMerge(parts),m=new THREE.Mesh(geo,olMat('solid',{flatShading:true}));m.castShadow=m.receiveShadow=true;grp.add(m);W.disp.push(geo);}}});}
+
+/* ---- Isola del Faro: round a tropical island ---- */
+THEMES.tropic={sky:[0x1e66d0,0x78b6ea,0xd6eaf2],fog:[0xbcd6e6,800,3700],sun:[0xfff4e0,2.7],hemi:[0x9ac8f0,0x6a7a50,.95],ground:'sand',exposure:.8,
+  cloud:{cov:.38,col:0xffffff,sun:0xfffaf0,dir:[.5,.6,.62],pow:2400,star:0},stands:[0x1aa0b0,0xffc61a]};
+{const G=[[40,20],[700,110],[1120,-340],[880,-760],[260,-860],[-300,-480]],L=G.map((p,i)=>olLeg(G,i)),LG=L[1].m,HL=L[3].m,SW=L[4].m,RP=L[5].m,LH=[1460,-300],JG=new THREE.Color(.22,.34,.15),
+  isl=(x,z)=>Math.hypot((x-450)/860,(z+390)/600)+.1*(olFbm(x/300,z/300,41,3)-.5),
+  head=(x,z)=>{const ax=1200,az=-330,sx=LH[0]-ax,sz=LH[1]-az;let t=((x-ax)*sx+(z-az)*sz)/(sx*sx+sz*sz);t=t<0?0:t>1?1:t;return Math.hypot(x-ax-sx*t,z-az-sz*t);},
+  lag=(x,z)=>{const [a,p]=L[1].loc(x,z);return Math.hypot(a/230,(p-80)/140);},   // the lagoon, open to the sea on its far side
+  h=(x,z)=>{const e=isl(x,z);let y=e<.93?1.6+olSS(.93,.72,e)*(6+26*olFbm(x/380,z/380,42,3)):e<1?1.6*(1-e)/.07:-(e-1)*70;
+    const hd=head(x,z);if(hd<160)y=Math.max(y,(9+5*olFbm(x/40,z/40,43,2))*olSS(85,35,hd)-30*olSS(60,160,hd));
+    const lg=lag(x,z);if(lg<1.15)y+=(-.42+.25*olFbm(x/50,z/50,44,3)-y)*olSS(1.15,.85,lg);
+    {const d=Math.hypot(x-HL[0],z-HL[1]);y+=40*Math.exp(-((d/75)**2))-14*Math.exp(-((d/18)**2));}   // an old volcano, a crater in its top
+    {const d=Math.hypot(x-SW[0],z-SW[1]);if(d<170){const pl=olFbm(x/45,z/45,45,3);y+=((pl>.58?-.3:.5+pl)-y)*olSS(170,120,d);}}   // the mangrove swamp
+    return y;};
+  TRACKS.push({id:'faro',name:'Isola del Faro',theme:'tropic',laps:2,prize:[35000,60000],
+    blurb:'Open country: round a tropical island, the sea on every side. Take the arches in order and any line between them: across the lagoon between the stilt houses, through the jungle, over the old crater, through the mangroves or out past the lighthouse.',
+    pts:olPlan(G,[[40],[-120,-150,-120],[60,80,60],[100,130,100],[70,90,70],[70,100]],[140,58]),
+    open:{seed:51,route:0,hw:8,water:0,oob:260,drift:.5,gates:G,h,ry:y=>Math.max(y,1.1),
+      kind:(x,z,y,d,sl)=>{if(Math.hypot(x-SW[0],z-SW[1])<160&&y<1.5)return 6;if(y<.05)return 9;if(isl(x,z)>.9&&y<2.3&&head(x,z)>40)return y<.8?9:2;return sl>.6?3:1;},
+      col:(c,k,y,x,z,sl)=>{const n=olFbm(x/36,z/36,46,2);if(k===6)c.setRGB(.3,.28,.18).multiplyScalar(.85+.3*n);else if(y<.05){const t=Math.min(1,-y/7);c.setRGB(.88-.62*t,.82-.44*t,.64-.22*t);}   // the sea bed: pale sand in the shallows, darker further out
+        else if(k===9)c.setRGB(.9,.84,.68).multiplyScalar(.93+.1*n);else if(k===2)c.setRGB(.95,.9,.76).multiplyScalar(.93+.1*n);else if(k===3)c.setRGB(.42,.4,.36).multiplyScalar(.8+.3*n);
+        else c.setRGB(.34,.45,.22).lerp(JG,olFbm(x/90,z/90,49,3)*.9).multiplyScalar(.82+.3*olFbm(x/11,z/11,50,2));},
+      rcol:(c,x,z)=>c.setRGB(.8,.74,.6).multiplyScalar(.93+.12*olNoise(x/8,z/8,47)),
+      rib:{a:'rgba(150,130,100,.32)',b:'rgba(255,250,235,.3)',rut:'rgba(120,100,76,.3)'},dust:{0:0xe8dcc0,9:0xf0e4c8,2:0xf4ead2,1:0xb8b08a,6:0x5a5038,3:0xb0a898},dustCol:0xe8dcc0,spray:0xf0fbff,
+      marks:{p:'flag',every:40,cols:[0xffc61a,0x1aa0b0]},gateCol:0x1aa0b0,beam:0xfff0a0,waterCol:0x168ea8,waterOp:.7,
+      bulls:[[LH[0]-16,LH[1]+1],LG,HL,SW,RP],
+      rise:(x,z,o)=>-o*.02,
+      scatter:[{p:'palm',n:600,s:[.75,1.3],clear:5,shadow:true,c:R=>R()<.5?0xffffff:0xe0ecd0,where:(x,z,y,k)=>k===1&&isl(x,z)<.9},
+        {p:'tree',n:450,s:[.8,1.4],clear:6,shadow:true,c:R=>R()<.5?0xffffff:0xd8e8c8,where:(x,z,y,k)=>k===1&&isl(x,z)<.86&&head(x,z)>60},
+        {p:'palm',n:140,s:[.8,1.25],clear:4,shadow:true,where:(x,z,y,k)=>(k===2||k===9)&&y>.6},
+        {p:'palm',n:70,s:[.7,1.1],near:[[...SW,160]],clear:4,where:(x,z,y,k)=>k===6&&y>.1},
+        {p:'bush',n:1100,s:[.5,1.2],clear:2,c:R=>[0x3a6a2a,0x4a7a30,0x2a5a22][(R()*3)|0],where:(x,z,y,k)=>k===1||(k===6&&y>.1)},
+        {p:'stilt',n:7,s:[.9,1.1],near:[[...LG,150]],clear:10,wet:true,where:(x,z,y)=>y<-.1&&lag(x,z)<.9&&Math.hypot(x-LG[0],z-LG[1])>12},
+        {p:'rock',v:1,n:44,s:[2,5],near:[[...RP,95]],clear:6,c:R=>[0x6a6660,0x5a5650,0x7a746a][(R()*3)|0],where:(x,z)=>Math.hypot(x-RP[0],z-RP[1])>9},
+        {p:'rock',v:1,n:70,s:[1.2,3.4],near:[[...HL,95]],clear:6,c:()=>0x4a4440,where:(x,z,y,k)=>(k===3||y>12)&&Math.hypot(x-HL[0],z-HL[1])>12},
+        {p:'rock',v:0,n:90,s:[1,2.6],clear:4,wet:true,c:()=>0x5a5852,where:(x,z,y)=>y<.4&&y>-2.5&&olHash(x|0,z|0,48)<.3},
+        {p:'reeds',n:160,s:[.8,1.3],near:[[...SW,170]],clear:2,wet:true,where:(x,z,y)=>y<.6&&y>-.4},
+        {p:'hut',n:4,s:[.9,1],near:[[1150,-290,60]],clear:10,where:(x,z,y)=>y>.8}],
+      extra:(W,Gm,grp)=>{const f=new THREE.Group(),y=olY(LH[0],LH[1]),wh=tdM(0xf2efe6,{roughness:.6}),rd=tdM(0xc8281e,{roughness:.6}),dk=tdM(0x2a2c30,{roughness:.5});   // the lighthouse on the headland
+        for(let k=0;k<6;k++){const m=new THREE.Mesh(new THREE.CylinderGeometry(3.3-(k+1)*.17,3.3-k*.17,4.4,20),k%2?rd:wh);m.position.y=k*4.4+2.2;m.castShadow=true;f.add(m);}
+        const add=(g,m,yy)=>{const o=new THREE.Mesh(g,m);o.position.y=yy;f.add(o);};add(new THREE.CylinderGeometry(2.8,2.8,.45,20),dk,26.6);
+        add(new THREE.CylinderGeometry(1.45,1.45,2.6,12),new THREE.MeshStandardMaterial({color:0xfff0c0,emissive:0xffd890,emissiveIntensity:1.4,roughness:.2}),28.1);add(new THREE.ConeGeometry(1.9,1.7,12),rd,30.25);
+        tdBox(f,wh,9,4,6,9,2,0);tdBox(f,rd,9.6,.5,6.6,9,4.2,0);
+        const bm=new THREE.MeshBasicMaterial({color:0xfff0c0,transparent:true,opacity:.07,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),beam=new THREE.Group(),cg=new THREE.ConeGeometry(7,160,16,1,true).translate(0,-80,0).rotateZ(Math.PI/2);
+        [0,Math.PI].forEach(r=>{const c=new THREE.Mesh(cg,bm);c.rotation.y=r;beam.add(c);});beam.position.y=28.1;f.add(beam);ambient.push(dt=>{beam.rotation.y+=dt*.6;});
+        f.position.set(LH[0],y,LH[1]);grp.add(f);W.disp.push(cg);
+        olCol({t:0,x:LH[0],z:LH[1],r:3.6,y0:y-2,y1:y+31});olCol({t:1,x0:LH[0]+4.5,x1:LH[0]+13.5,z0:LH[1]-3,z1:LH[1]+3,y0:y-2,y1:y+5});}}});}
+
+/* ---- Brughiera: over a highland moor ---- */
+THEMES.moor={sky:[0x56677a,0x98a4ae,0xc6cac6],fog:[0xb2b8b6,450,2800],sun:[0xfff0dc,1.7],hemi:[0xb8c4cc,0x5a5040,1.15],ground:'grass',exposure:.92,
+  cloud:{cov:.62,col:0xd4d8da,sun:0xfff8ee,dir:[.4,.5,.76],pow:1400,star:0},stands:[0x5a2a6a,0xd8c8a0]};
+{const G=[[0,0],[640,-40],[1060,-380],[880,-880],[330,-1020],[-200,-780],[-320,-320]],L=G.map((p,i)=>olLeg(G,i)),BG=L[2].m,LO=L[3].m,TR=L[5].m,PL=L[6].m,CA=L[3].at(.35,-105),FD=L[3].at(.5+40/L[3].L,0),
+  HB=new THREE.Color(.36,.3,.2),
+  h=(x,z)=>{let y=2+22*olFbm(x/560,z/560,51,4)**2+2.5*olFbm(x/120,z/120,52,2);
+    {const d=Math.hypot(x-TR[0],z-TR[1]);y+=30*Math.exp(-((d/80)**2.2))*(1+.3*olFbm(x/12,z/12,53,2));}   // the tor
+    {const d=Math.hypot(x-CA[0],z-CA[1]);y+=6*Math.exp(-((d/45)**2));}   // the castle's knoll
+    {const [a,p]=L[3].loc(x,z),f=olSS(1.25,.9,Math.hypot(a/150,p/80));if(f>0)y+=(-3+2.1*Math.exp(-(((a-40)/12)**2))-y)*f;}   // the loch, a ford across it
+    {const d=Math.hypot(x-BG[0],z-BG[1]);if(d<140){const pl=olFbm(x/40,z/40,54,3);y+=((pl>.57?-.3:.35+pl*.5)-y)*olSS(140,90,d);}}   // the bog
+    return y;};
+  TRACKS.push({id:'brughiera',name:'Brughiera',theme:'moor',laps:2,prize:[35000,60000],
+    blurb:'Open country: over a highland moor, where the only walls are dry-stone ones. Take the arches in order and any line between them: through the gateways in the field walls, across the bog, through the ford in the loch below the castle, over the tor or between the pines of the plantation.',
+    pts:olPlan(G,[[60],[80,100,80],[100,130,100],[110,140,110],[70,90,70],[90,120,90],[70]],[150,0]),
+    open:{seed:41,route:0,hw:8,water:0,oob:260,drift:.5,gates:G,h,ry:y=>Math.max(y,1.6),
+      kind:(x,z,y,d,sl)=>{if(y<.1||(Math.hypot(x-BG[0],z-BG[1])<125&&y<1.3))return 6;if(sl>.55)return 3;return olFbm(x/110,z/110,55,3)<.36||y<3.5?1:13;},
+      col:(c,k,y,x,z,sl)=>{const n=olFbm(x/30,z/30,56,2);if(y<0)c.setRGB(.2,.2,.16).multiplyScalar(.8+.3*n);else if(k===6)c.setRGB(.25,.21,.15).multiplyScalar(.85+.3*n);
+        else if(k===3)c.setRGB(.5,.5,.48).multiplyScalar(.8+.3*n);else if(k===1)c.setRGB(.38,.44,.25).multiplyScalar(.85+.25*n);
+        else c.setRGB(.38,.22,.36).lerp(HB,olFbm(x/70,z/70,57,2)*.7).multiplyScalar(.82+.3*olFbm(x/9,z/9,60,2));},
+      rcol:(c,x,z)=>c.setRGB(.56,.53,.47).multiplyScalar(.93+.12*olNoise(x/7,z/7,58)),
+      rib:{a:'rgba(80,74,64,.34)',b:'rgba(210,205,195,.26)',rut:'rgba(60,54,46,.32)'},dust:{0:0xb8b2a4,13:0x8a7a6a,1:0x8a9a6a,6:0x4a4030,3:0xa8a8a0},dustCol:0xb8b2a4,spray:0xd8dcd8,
+      marks:{p:'cairn',every:35,cols:[0xb8b4aa,0x9c988e]},gateCol:0x6a2a7a,beam:0xe0c8ff,waterCol:0x2a3a44,waterOp:.88,
+      bulls:[PL,BG,FD,[CA[0]+5,CA[1]+4],TR],
+      rise:(x,z,o)=>o*.011*(6+22*olFbm(x/800,z/800,59,3)),
+      scatter:[{p:'rock',v:1,n:70,s:[2,4.6],near:[[...TR,90]],clear:6,c:R=>[0x7a7a74,0x8a8a82,0x6a6a64][(R()*3)|0],where:(x,z)=>Math.hypot(x-TR[0],z-TR[1])>9},
+        {p:'rock',v:0,n:160,s:[.6,1.8],clear:4,c:()=>0x8a8880,where:(x,z,y,k)=>k===13||k===3},
+        {p:'fir',n:170,s:[.85,1.2],near:[[...PL,110]],clear:6,shadow:true,where:(x,z)=>Math.hypot(x-PL[0],z-PL[1])>8},
+        {p:'tuft',n:900,s:[.6,1.1],clear:1,c:R=>R()<.5?0x6a4a5a:0x5a4a3a,where:(x,z,y,k)=>k===13},
+        {p:'bush',n:260,s:[.4,.9],clear:2,c:R=>[0x5a3a4a,0x4a4a2a,0x6a4a50][(R()*3)|0],where:(x,z,y,k)=>k===13},
+        {p:'reeds',n:140,s:[.8,1.3],near:[[...BG,140],[...LO,170]],clear:2,wet:true,where:(x,z,y)=>y<.8&&y>-.5}],
+      extra:(W,Gm,grp,R)=>{const y=olY(CA[0],CA[1]),cs=[];   // the ruined castle by the loch, square to the compass so its walls are boxes: curtain walls broken to uneven heights, towers and a keep with merlons
+        [[0,-15,32,2.2,6.5],[-10,15,12,2.2,6],[10,15,12,2.2,4],[-15,0,2.2,32,6],[15,-4,2.2,22,4.5],[-15,-15,6,6,10],[15,-15,6,6,8.5],[-15,15,6,6,9],[-6,-6,9,9,15]].forEach(([x,z,w,d,hh],q)=>{
+          olCol({t:1,x0:CA[0]+x-w/2,x1:CA[0]+x+w/2,z0:CA[1]+z-d/2,z1:CA[1]+z+d/2,y0:y-4,y1:y+hh});
+          if(w>=5&&d>=5){cs.push([olStone(w,hh+3,d,q*7).translate(CA[0]+x,y+hh/2-1.5,CA[1]+z),0x625e56]);
+            for(let k=0;k<4;k++)for(let s=-w/2+.45;s<w/2;s+=1.8){const [mx,mz]=k<2?[x+s,z+(k?d:-d)/2-(k?.45:-.45)]:[x+(k>2?w:-w)/2-(k>2?.45:-.45),z+s];cs.push([olStone(.9,1,.9,q+k*31+(s*10|0)).translate(CA[0]+mx,y+hh+.5,CA[1]+mz),0x625e56]);}return;}
+          const L=Math.max(w,d),n=Math.ceil(L/2.4),cl=L/n;for(let k=0;k<n;k++){const hc=hh*(R()<.12?.45:.8+.3*R()),o=-L/2+cl*(k+.5),[cx,cz]=w>d?[x+o,z]:[x,z+o];
+            cs.push([olStone(w>d?cl:w,hc+3,w>d?d:cl,q*13+k).translate(CA[0]+cx,y+hc/2-1.5,CA[1]+cz),0x625e56]);}});
+        {const geo=olMerge(cs),m=new THREE.Mesh(geo,olMat('solid',{flatShading:true}));m.castShadow=m.receiveShadow=true;grp.add(m);W.disp.push(geo);}
+        const parts=[],C0=[340,-490];   // dry-stone field walls in two directions, each with a gateway or two, and always a gap where the route goes through
+        for(let fam=0;fam<2;fam++){const an=fam?2.02:.4,ux=Math.cos(an),uz=Math.sin(an),vx=-uz,vz=ux;
+          for(let k=-3;k<=3;k++){const off=k*(fam?240:190)+(R()-.5)*70,len=300+R()*440,sh=(R()-.5)*500,g1=R()*len,g2=R()<.5?R()*len:-99,cx=C0[0]+vx*off+ux*sh,cz=C0[1]+vz*off+uz*sh,
+            P=s=>{const w=7*Math.sin(s/70+k*1.7);return [cx+ux*(s-len/2)+vx*w,cz+uz*(s-len/2)+vz*w];};
+            for(let s=0;s<len;s+=4){if(Math.abs(s-g1)<4||Math.abs(s-g2)<4)continue;const [ax,az]=P(s),[bx,bz]=P(s+4),mx=(ax+bx)/2,mz=(az+bz)/2;
+              if(mx<W.bx0||mx>W.bx1||mz<W.bz0||mz>W.bz1)continue;const y=olY(mx,mz);if(y<.6||olDist(mx,mz)<W.hw+5||Math.hypot(mx-CA[0],mz-CA[1])<30||Math.hypot(mx-BG[0],mz-BG[1])<120)continue;
+              parts.push([olStone(4.1,1.2,.9,fam*9001+k*977+s,.62).rotateY(-Math.atan2(bz-az,bx-ax)).translate(mx,y+.4,mz),[0x5a574f,0x524f48,0x625f57][(s/4|0)%3]]);
+              olCol({t:2,ax,az,bx,bz,r:.45,y0:y-1,y1:y+1.1});}}}
+        const geo=olMerge(parts),m=new THREE.Mesh(geo,olMat('solid',{flatShading:true}));m.castShadow=m.receiveShadow=true;grp.add(m);W.disp.push(geo);}}});}
 TRACKS.forEach(t=>{if(!t.km)try{t.km=trackGeom(t).len/1000;}catch(e){}});renderTracks();
 /* =====================================================================
    VIEWS WITH LIFE IN THEM. The beach gets its people, umbrellas, a
@@ -15496,11 +16052,11 @@ function updateRace(dt){
   if(g.wreckT&&!g.resultShown&&g.t>g.wreckT+2.5)showWreck();
   if(g.mode==='drag'&&!g.started&&th){v.rpm+= (v.car.redline*.7-v.rpm)*dt*6;}
   // surface
-  if(g.mode==='track'){g.idx=nearestIdx(v.x,v.z,g.idx);const lat=Math.abs(lateralOffset(v.x,v.z,g.idx));v.surface=lat>ROAD_W/2+1.4?0.45:1;g.offRoad=v.surface<1;}
+  if(g.mode==='track'&&track.open){}else if(g.mode==='track'){g.idx=nearestIdx(v.x,v.z,g.idx);const lat=Math.abs(lateralOffset(v.x,v.z,g.idx));v.surface=lat>ROAD_W/2+1.4?0.45:1;g.offRoad=v.surface<1;}
   else{v.surface=Math.abs(v.x)>ROAD_W/2+0.6?0.45:1;g.offRoad=v.surface<1;}
   // physics substeps
-  const sub=3;for(let i=0;i<sub;i++)v.step(dt/sub);
-  if(g.mode==='track'){g.idx=nearestIdx(v.x,v.z,g.idx);const r=track.right[g.idx],t=track.tan[g.idx];wallClamp(v,lateralOffset(v.x,v.z,g.idx),[r.x,r.z],Math.atan2(t.x,t.z),WALL.track,dt);
+  const sub=3;if(g.mode==='track'&&track.open)olStep(v,g,dt,sub);else for(let i=0;i<sub;i++)v.step(dt/sub);
+  if(g.mode==='track'&&track.open){}else if(g.mode==='track'){g.idx=nearestIdx(v.x,v.z,g.idx);const r=track.right[g.idx],t=track.tan[g.idx];wallClamp(v,lateralOffset(v.x,v.z,g.idx),[r.x,r.z],Math.atan2(t.x,t.z),WALL.track,dt);
     const tp=track.pts[g.idx],gr=track.grade[g.idx],f=v.fwd;v.hy=tp.y+gr*((v.x-tp.x)*t.x+(v.z-tp.z)*t.z);v.slope=gr*(f[0]*t.x+f[1]*t.z);}
   else wallClamp(v,v.x,[1,0],0,WALL[g.mode],dt);
   if(v.scrape)g.everScraped=true;
@@ -15512,11 +16068,11 @@ function updateRace(dt){
     /* Count forward progress round the lap, so a crossing only scores once the car has
        actually been round. Without it, reversing back over the line and driving on, or
        a rival shunting a parked car across it, logged a lap and a best time. */
-    g.prog=(g.prog||0)+((g.idx-g.lastIdx+n*1.5)%n)-n/2;
+    if(track.open)olLaps(g,v,dt);else{g.prog=(g.prog||0)+((g.idx-g.lastIdx+n*1.5)%n)-n/2;
     if(g.lastIdx>n-40&&g.idx<40&&g.started){g.crossed=true; // crossed line
       if(g.t-g.lapStart<5){g.lapStart=g.t;g.prog=0;} // rolling off the grid: lap 1 starts here
       else if(g.prog>n*.85){g.prog=0;const lt=g.t-g.lapStart;g.lapTimes.push(lt);if(!g.best||lt<g.best){g.best=lt;g.newBest=true;store.set(bestKey(),lt);}checkMedal(track.def,lt);if(g.pos===1)award(lapLedPay(track.def),'lap led');
-        g.lap++;g.lapStart=g.t;if(g.lap>g.laps&&!g.done){g.done=true;finishTrack();}}}
+        g.lap++;g.lapStart=g.t;if(g.lap>g.laps&&!g.done){g.done=true;finishTrack();}}}}
     g.lastIdx=g.idx;
     ai.forEach(r=>r.step(dt,g.started&&!g.done,v,g.idx));
     // collisions (soft push)
@@ -15586,7 +16142,7 @@ function payTrack(g){
   if(bill>0){lines.push(pen===bill?['Damage',-pen]:pen?['Damage (Bronze cover paid half)',-pen]:[`Damage ${fmtMoney(bill)} paid by Gold cover`,0]);total-=pen;}
   total=Math.max(0,total);
   // a race without touching a wall once doubles everything above
-  if(!g.everScraped&&total>0){lines.push(['No wall contact · ×2',total]);total*=2;}
+  if(!g.everScraped&&total>0){lines.push([track.open?'Nothing hit · ×2':'No wall contact · ×2',total]);total*=2;}
   const wl=wagerLine(g.pos===1);if(wl){lines.push(wl);total+=wl[1];}
   const bl=bountyLine(g.pos===1);if(bl){lines.push(bl);total+=bl[1];}
   return {total:Math.round(total),lines};
