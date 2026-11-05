@@ -558,7 +558,7 @@ kbd{font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:.06
 <div id="pause" class="dialog" hidden>
   <div class="card chamfer">
     <h2>Paused</h2>
-    <p class="sub">Engine idling. Esc or P resumes.</p>
+    <p class="sub">Engine idling. Esc or P resumes, G goes to the garage.</p>
     <div class="actions"><button class="btn primary" id="resumeBtn">Resume</button><button class="btn" id="restartBtn">Restart</button><button class="btn" id="garageBtn">Garage</button></div>
   </div>
 </div>
@@ -3830,7 +3830,7 @@ addEventListener('keydown',e=>{
     const clear=!document.querySelector('.dialog:not([hidden])')&&$('#shop').hidden;
     if(clear&&e.code==='KeyH'){setLook(true);return;}if(clear&&e.code==='KeyV'){toggleWin();if(lookMode)lookWake();return;}}
   if(e.code==='Escape'){if(decPlacing){cancelPlace();}else if(!$('#career').hidden){$('#career').hidden=true;}else if(!$('#licensing').hidden){$('#licensing').hidden=true;}else if(!$('#raceMenu').hidden){$('#raceMenu').hidden=true;}else if(!$('#settings').hidden){$('#settings').hidden=true;}else if(!$('#displays').hidden){$('#displays').hidden=true;}else if(!$('#life').hidden){closeLife();}else if(!$('#decor').hidden){closeDecor();}else if(!$('#shop').hidden){$('#shop').hidden=true;}else if(state.screen==='race')togglePause();else if(state.screen==='pause')togglePause();}
-  if(e.code==='KeyP'&&(state.screen==='race'||state.screen==='pause'))togglePause();
+  if(e.code==='KeyP'&&(state.screen==='race'||state.screen==='pause'))togglePause();else if(e.code==='KeyG'&&state.screen==='pause')toGarage();
   if(state.screen==='race'){if(e.code==='KeyC')state.cam=(state.cam+1)%3;if(e.code==='KeyB')state.post=!state.post;if(e.code==='KeyR')resetCar();if(e.code==='KeyU')toggleUnits();}
   if(state.screen==='garage'){const free=$('#raceMenu').hidden;if(free&&(e.code==='ArrowDown'||e.code==='KeyS'))selectCar(state.carIdx+1);if(free&&(e.code==='ArrowUp'||e.code==='KeyW'))selectCar(state.carIdx-1);if(e.code==='Enter'){if($('#raceMenu').hidden)openRaceMenu();else startRace();}}
   if(['ArrowUp','ArrowDown','Space','ShiftLeft','ShiftRight'].includes(e.code))e.preventDefault();});
